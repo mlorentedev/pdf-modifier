@@ -1,42 +1,66 @@
----
-tags: [spec, verification, templates]
-created: "2026-10-12"
----
+# CORE-001 — verification
 
-# Verification - CORE-001
+Every claim below is a command and its output, produced in the session that made the change.
 
-## Evidence
+## The defect reproduced
 
-Map every acceptance criterion from `proposal.md` to concrete proof (commit hash, test name, or observed behavior).
+```
+$ uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov
+3 failed, 3 passed
+  FAILED [...wider-object-per-line]
+  FAILED [...narrower-object-per-line]
+  FAILED [...shorter-object-per-line]
+  PASSED [...single-object] ×3
+```
 
-- [ ] Criterion 1 -> commit `<hash>` / test `<name>`
-- [ ] Criterion 2 -> commit `<hash>` / test `<name>`
-- [ ] Criterion 3 -> commit `<hash>` / test `<name>`
+Fails only in the structure that has the defect, and the passing half is kept to record which structure is not affected.
 
-## Test status
+## The mechanism, isolated
 
-- Test suite: `<command> -> <output / coverage %>`
-- Manual smoke test: what was exercised, what was observed
-- No regressions in existing test suite: yes / no (if no, document)
+Redacting **only** the target line's own tight box on a ten-line fixture:
 
-## Decisions made during implementation
+```
+ARC: 00                 y=139.9 .. 152.5
+AC:  68D489883C5B7A25   y=150.9 .. 163.5   <- rect redacted: [72.0, 150.9, 185.4, 163.5]
+CVM: 5E0000             y=161.9 .. 174.5
 
-Brief log of non-obvious trade-offs or course corrections taken during the work. Routine choices belong in commit messages, not here.
+after: 7 lines (was 10)   ARC gone   CVM gone   AC gone
+```
 
--
--
+Three lines removed by a rectangle covering one. Line spacing 11.0 pt against a line height of 12.6 pt leaves 1.6 pt of overlap between neighbours, and `apply_redactions` removes every text object that intersects.
 
-## Promotion candidates
+## After the fix
 
-Answer each line `yes: <path>`, naming the file you promoted, or `no: <reason>`. `dotf spec archive` refuses a line left unanswered, a `no` without a reason, and a `yes` whose file does not exist; a `00_meta/` path is looked up in the vault.
+```
+$ uv run pytest tests/unit/core -q --no-cov
+183 passed, 11 skipped          (was 177)
 
-- [ ] Lesson for the repo's `docs/lessons/`? <yes: path / no: reason>
-- [ ] ADR-worthy decision for the repo's `docs/adr/adr-XXX.md`? <yes: path / no: reason>
-- [ ] New pattern candidate for `00_meta/patterns/`? Only if this recurs in >1 project. <yes: path / no: reason>
+$ make check
+385 passed, 19 skipped, coverage 84.34%   (gate 80%)
+```
 
-## Archive checklist
+## Against the real document, not only the fixture
 
-- [ ] `proposal.md` frontmatter set to `status: archived`
-- [ ] Folder moved: `specs/CORE-001/` -> `specs/archive/CORE-001/`
-- [ ] Bitácora board ticket for this spec moved to Done / closed with PR link (ADR-018)
-- [ ] Promotions above executed (if any)
+The first attempt at this **appeared to pass and proved nothing**: the reproduction script still had the offending substitution commented out — disabled as a workaround for this very defect — so the neighbours survived with the fix doing no work. With the substitution restored and active, which is the operation that used to take the two lines:
+
+```
+ARC: present   CVM: present   new value: present   old value: absent   lines: 135
+```
+
+The document stays outside the repository; the fixture in the test is synthetic and reproduces the same shape.
+
+## ADR-014 conditions
+
+| Condition | Evidence |
+|---|---|
+| Failing test first, synthetic fixture | RED committed on its own (`1c0ae90`); fixture generated inside the test |
+| No public contract change | `PDFModifier`'s functions, types and signatures unchanged; one new private static helper |
+| Scoped to the defect | The diff is the helper plus its two call sites; no refactor rides along |
+
+## How this relates to #179
+
+The dropped-lines defect is **not** one of #179's original five findings. It was found afterwards, by generating a real receipt, and added to that ticket with priority **first** there — because it is the only one that destroys content rather than failing to add or preserve it. #179 stays open for the other findings; CORE-001 closes only this one. The chain of reasoning, including the two hypotheses that were falsified by measurement, is in that ticket's comments.
+
+## Not covered here
+
+The other findings of #179 — the `--help` entry point, cloning a repeated block, metadata, page numbering — are untouched by this change and remain open on that ticket.
