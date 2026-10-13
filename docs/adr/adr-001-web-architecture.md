@@ -7,7 +7,7 @@
 
 ## Context
 
-PDF Modifier MCP is a CLI + MCP server for PDF text replacement. It needs a web UI to allow non-technical users to edit PDFs with drag-and-drop, visual structure editing, and AI-powered suggestions. The existing CLI and MCP interfaces must remain untouched.
+PDF Modifier is a CLI + MCP server for PDF text replacement. It needs a web UI to allow non-technical users to edit PDFs with drag-and-drop, visual structure editing, and AI-powered suggestions. The existing CLI and MCP interfaces must remain untouched.
 
 The web layer is a new interface on top of the existing core (`PDFModifier`, `PDFAnalyzer`), which is reused as-is.
 

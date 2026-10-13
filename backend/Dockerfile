@@ -1,5 +1,5 @@
 # =============================================================================
-# Backend Dockerfile — pdf-modifier-mcp (FastAPI)
+# Backend Dockerfile — pdf-modifier (FastAPI)
 # Multi-stage: builder (download wheels) → runtime (install + run, non-root)
 # =============================================================================
 

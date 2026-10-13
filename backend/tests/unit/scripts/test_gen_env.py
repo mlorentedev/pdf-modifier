@@ -29,7 +29,7 @@ DEV_OVERRIDES = _gen_env_mod.DEV_OVERRIDES
 render_env = _gen_env_mod.render_env
 
 EXAMPLE = """# comment stays
-APP_NAME=pdf-modifier-mcp
+APP_NAME=pdf-modifier
 APP_ENV=production
 DEBUG=false
 CORS_ORIGINS=https://yourdomain.com
@@ -46,7 +46,7 @@ def test_render_env_preserves_comments_and_unrelated_keys(tmp_path: Path) -> Non
     out = render_env(example)
 
     assert "# comment stays" in out
-    assert "APP_NAME=pdf-modifier-mcp" in out
+    assert "APP_NAME=pdf-modifier" in out
     assert "# SECRET_KEY comment stays above" in out
 
 

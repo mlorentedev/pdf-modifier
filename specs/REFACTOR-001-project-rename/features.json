@@ -1,0 +1,58 @@
+[
+  {
+    "id": "REFACTOR-001-project-rename-f1",
+    "behavior": "AC1: the distribution and console script are pdf-modifier, and the import package is unchanged.",
+    "verification": "cd backend && uv run python -c 'import pdf_modifier' && uv run pdf-modifier --help >/dev/null && echo renamed",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f2",
+    "behavior": "AC1: pyproject declares the new distribution name and console script key.",
+    "verification": "grep -qx 'name = \"pdf-modifier\"' backend/pyproject.toml && grep -q '^pdf-modifier = ' backend/pyproject.toml",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f3",
+    "behavior": "AC2: no tracked file outside the declared exclusions still names the project pdf-modifier-mcp.",
+    "verification": "cd backend && uv run pytest tests/unit/rename -q --no-cov",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f4",
+    "behavior": "AC3: the MCP registry identity names the new slug and title, and the server still lists its tools.",
+    "verification": "python3 -c \"import json;d=json.load(open('backend/server.json'));s=json.dumps(d);assert 'pdf-modifier-mcp' not in s, 'old slug in server.json';assert d['repository']['url'].endswith('/pdf-modifier'), d['repository']['url'];print(d['name'])\" && cd backend && uv run pytest tests/unit/interfaces/test_mcp.py -q --no-cov",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f5",
+    "behavior": "AC4: the docs site builds with the new identity configured.",
+    "verification": "cd site && npm run build",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f6",
+    "behavior": "AC5: the dotfiles credential consumers are named after the new slug, so a sync selects them.",
+    "verification": "dotf secrets sync ci --repo mlorentedev/pdf-modifier --dry-run",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f7",
+    "behavior": "AC6: the backend and frontend suites and the lessons guard are green under the new name.",
+    "verification": "make check && make check-frontend && bash scripts/check-lessons.sh",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "REFACTOR-001-project-rename-f8",
+    "behavior": "AC7: the released distribution carries the new name on PyPI.",
+    "verification": "curl -sS https://pypi.org/pypi/pdf-modifier/json | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d['info']['version'])\"",
+    "state": "pending",
+    "evidence": ""
+  }
+]

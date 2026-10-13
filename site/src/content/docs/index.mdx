@@ -1,19 +1,19 @@
 ---
-title: pdf-modifier-mcp
+title: pdf-modifier
 description: Find and replace text in PDFs while preserving font styles. CLI for humans, MCP server for AI agents.
 template: splash
 hero:
   tagline: Find and replace text in PDFs — from your terminal or your AI assistant. Font styles preserved, layout untouched.
   actions:
     - text: Get Started
-      link: /pdf-modifier-mcp/getting-started/
+      link: /pdf-modifier/getting-started/
       icon: right-arrow
     - text: View on GitHub
-      link: https://github.com/mlorentedev/pdf-modifier-mcp
+      link: https://github.com/mlorentedev/pdf-modifier
       icon: external
       variant: minimal
     - text: PyPI
-      link: https://pypi.org/project/pdf-modifier-mcp/
+      link: https://pypi.org/project/pdf-modifier/
       icon: external
       variant: minimal
 ---
@@ -21,16 +21,16 @@ hero:
 import { Card, CardGrid, LinkCard, Badge } from '@astrojs/starlight/components';
 
 <div class="hero-badges">
-  <a href="https://github.com/mlorentedev/pdf-modifier-mcp/actions/workflows/ci.yml">
-    <img src="https://github.com/mlorentedev/pdf-modifier-mcp/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="https://github.com/mlorentedev/pdf-modifier/actions/workflows/ci.yml">
+    <img src="https://github.com/mlorentedev/pdf-modifier/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <a href="https://pypi.org/project/pdf-modifier-mcp/">
-    <img src="https://img.shields.io/pypi/v/pdf-modifier-mcp" alt="PyPI" />
+  <a href="https://pypi.org/project/pdf-modifier/">
+    <img src="https://img.shields.io/pypi/v/pdf-modifier" alt="PyPI" />
   </a>
   <a href="https://www.python.org/downloads/">
     <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+" />
   </a>
-  <a href="https://mlorentedev.github.io/pdf-modifier-mcp/">
+  <a href="https://mlorentedev.github.io/pdf-modifier/">
     <img src="https://img.shields.io/badge/docs-live-blue.svg" alt="Docs" />
   </a>
   <a href="https://opensource.org/licenses/MIT">
@@ -45,17 +45,17 @@ Replacing text in a PDF should not require Adobe Acrobat, a SaaS subscription, o
 
 ## The solution
 
-`pdf-modifier-mcp` replaces text at the span level: it redacts the original, then reinserts the replacement with matched font family, weight, size, and color — using Base 14 font mapping (Helvetica, Times, Courier and their bold variants).
+`pdf-modifier` replaces text at the span level: it redacts the original, then reinserts the replacement with matched font family, weight, size, and color — using Base 14 font mapping (Helvetica, Times, Courier and their bold variants).
 
 Two interfaces, same engine:
 - **CLI** (`pdf-mod`) — for batch jobs, scripting, and CI pipelines.
-- **MCP Server** (`pdf-modifier-mcp`) — so Claude Desktop, Cursor, or any MCP client can edit PDFs autonomously.
+- **MCP Server** (`pdf-modifier`) — so Claude Desktop, Cursor, or any MCP client can edit PDFs autonomously.
 - **Web UI** — FastAPI + SvelteKit for interactive editing in the browser.
 
 Install and run in one line:
 
 ```bash
-pip install pdf-modifier-mcp
+pip install pdf-modifier
 ```
 
 ## Features
@@ -89,7 +89,7 @@ pip install pdf-modifier-mcp
 
 ```bash
 # Install from PyPI
-pip install pdf-modifier-mcp
+pip install pdf-modifier
 
 # Replace text in a PDF
 pdf-mod modify input.pdf output.pdf -r "Draft=Final" -r "$99.99=$149.99"
@@ -126,12 +126,12 @@ All interfaces share the same core. The modifier uses a batch-redact strategy �
 <CardGrid>
   <LinkCard
     title="Getting Started"
-    href="/pdf-modifier-mcp/getting-started/"
+    href="/pdf-modifier/getting-started/"
     description="Installation, CLI usage, MCP server setup, and integration guide."
   />
   <LinkCard
     title="Source Code"
-    href="https://github.com/mlorentedev/pdf-modifier-mcp"
+    href="https://github.com/mlorentedev/pdf-modifier"
     description="Browse the source, open issues, or contribute on GitHub."
   />
 </CardGrid>

@@ -1,4 +1,4 @@
-# Contributing to PDF Modifier MCP
+# Contributing to PDF Modifier
 
 Thank you for your interest in contributing! We follow standard GitHub Flow and use specific conventions to ensure quality and automated releases.
 

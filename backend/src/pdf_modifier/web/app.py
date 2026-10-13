@@ -19,7 +19,7 @@ logger = setup_logging(__name__)
 def _get_version() -> str:
     """Get package version from metadata (single source of truth)."""
     try:
-        return version("pdf-modifier-mcp")
+        return version("pdf-modifier")
     except PackageNotFoundError:
         return "0.0.0-dev"
 
@@ -45,7 +45,7 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         settings = WebSettings()
 
     app = FastAPI(
-        title="PDF Modifier MCP",
+        title="PDF Modifier",
         description="PDF text modification API with CLI and MCP interfaces.",
         version=_get_version(),
         lifespan=lifespan,

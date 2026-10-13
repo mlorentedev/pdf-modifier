@@ -23,7 +23,7 @@ from ..logger import setup_logging
 logger = setup_logging(__name__)
 
 mcp = FastMCP(
-    "pdf-modifier-mcp",
+    "pdf-modifier",
 )
 
 

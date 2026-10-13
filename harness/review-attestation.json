@@ -12,7 +12,7 @@
     "mistaken for a clear one; but a check that says the same thing on every run stops being read.",
     "",
     "review_markers ARE MEASURED HERE, NOT COPIED. Measured 2026-09-06 over the comments of the",
-    "last 15 PRs (#111..#129) with `gh api repos/mlorentedev/pdf-modifier-mcp/issues/<n>/comments`.",
+    "last 15 PRs (#111..#129) with `gh api repos/<owner>/<repo>/issues/<n>/comments`.",
     "What CodeRabbit actually emits in this repo, by PR:",
     "  ## Walkthrough            -> #111 #114 #117 #124 #126 #128 #129   (a review ran; the attesting marker)",
     "  ## Review limit reached   -> #121 #123 #129   (each also carries 'rate limited by coderabbit.ai';",

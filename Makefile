@@ -1,12 +1,12 @@
 # =============================================================================
-# Makefile — PDF Modifier MCP
+# Makefile — PDF Modifier
 # =============================================================================
 
 SHELL := /bin/bash
 .SHELLFLAGS := -c -o pipefail
 
 UV := uv
-APP_NAME := pdf-modifier-mcp
+APP_NAME := pdf-modifier
 COMPOSE := docker compose
 COMPOSE_FILES := -f infra/compose.base.yml -f infra/compose.dev.yml
 COMPOSE_PROD := -f infra/compose.base.yml -f infra/compose.prod.yml
@@ -23,7 +23,7 @@ TARGET ?= all
 # =============================================================================
 .PHONY: help
 help: ## Show available targets
-	@echo "=== PDF Modifier MCP ==="
+	@echo "=== PDF Modifier ==="
 	@echo ""
 	@echo "Setup:"
 	@echo "  make setup                  Install all deps"
@@ -106,7 +106,7 @@ run: ## Run service (TARGET: api|mcp|cli|frontend)
 ifeq ($(TARGET),api)
 	cd backend && $(UV) run uvicorn pdf_modifier.web.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 else ifeq ($(TARGET),mcp)
-	cd backend && $(UV) run pdf-modifier-mcp
+	cd backend && $(UV) run pdf-modifier
 else ifeq ($(TARGET),cli)
 	cd backend && $(UV) run pdf-mod $(ARGS)
 else ifeq ($(TARGET),frontend)

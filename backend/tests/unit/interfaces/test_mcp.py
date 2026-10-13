@@ -26,7 +26,7 @@ class TestMCPServer:
     """Tests for MCP server configuration."""
 
     def test_server_name(self) -> None:
-        assert mcp.name == "pdf-modifier-mcp"
+        assert mcp.name == "pdf-modifier"
 
 
 class TestMCPReadStructure:
