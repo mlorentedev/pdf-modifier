@@ -21,6 +21,7 @@ small enough to see fail on its own; the first one is the reason
 - [ ] Keep the trim logic untouched. It is an optimisation that reduces refusals now, not the safety mechanism.
 - [ ] Sweep the leading range in a row-level parametrisation: 0.45, 0.60, 0.70, 0.75, 0.78, 1.00, 1.30 em, each asserting **refuse-or-preserve** and reading the outcome from the file.
 - [ ] Confirm the documents that convert today still convert: the two-span receipt, the overprint shapes, 10 pt-on-8 pt, 12 pt-on-10 pt, the watermark page in both span orders.
+- [ ] For the ONE accepted case -- a co-located object the rectangle cannot avoid -- emit a `warnings` entry naming the page and the object instead of refusing, and assert it for CORE-003's fixture (`test_a_label_sharing_the_target_ink_loses_exactly_the_shared_characters`). This is the decision recorded on `#199`: accepted and reported.
 
 ## The check must be shown to FIRE
 
