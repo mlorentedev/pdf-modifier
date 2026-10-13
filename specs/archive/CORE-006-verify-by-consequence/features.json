@@ -1,0 +1,44 @@
+[
+  {
+    "id": "CORE-006-f1",
+    "behavior": "A block at 0.60 em leading — the arrangement CORE-001 loses characters on silently — either keeps every non-target text object's characters or is refused. Read from the written output file, never from the in-memory page.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_block_at_060_em_leading_is_refused_or_preserved -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 1 passed. RED before the check existed: 'lines lost with no error at 0.60 em leading: [\"keepkeep2\", \"keepkeep4\"]' — the second signer's reproduction. (A first review found this entry named test_a_sub_half_leading_block_is_refused_or_preserved, which does not exist; corrected to the row that does.)"
+  },
+  {
+    "id": "CORE-006-f2",
+    "behavior": "The whole ailing range holds: from 0.45 em to 1.30 em leading, refuse-or-preserve, with no silent loss at any step. A row per leading, so a partial fix cannot be read as the whole range.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_no_leading_in_the_ailing_range_loses_characters_silently -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 7 passed (0.45, 0.60, 0.70, 0.75, 0.78, 1.00, 1.30 em). Behaviour sweep: 0.45-0.70 em refused by the new check, 0.75 em by the fitter's own guard, 0.83 em and above converted with nothing lost."
+  },
+  {
+    "id": "CORE-006-f3",
+    "behavior": "The check FIRES: with the fitter made to return the raw, unfitted rectangle, the conversion refuses. A consequence check that has never been shown to fire is a green check that reads nothing.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_planted_loss_is_caught_by_the_consequence_check -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 1 passed. The fitter is monkeypatched to return the raw rectangle and the conversion refuses naming the protected object, writing no output file."
+  },
+  {
+    "id": "CORE-006-f4",
+    "behavior": "Every document that converts today still converts — the two-span receipt line, the three overprint shapes, 10 pt-on-8 pt, 12 pt-on-10 pt, and the watermark page in both span orders. An unnecessary refusal is the same defect as a silent loss, in the other direction.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 48 passed in the file, 225 in tests/unit/core, 429 via `make check` — the 32 pre-existing rows unchanged, which is what caught the first implementation over-refusing."
+  },
+  {
+    "id": "CORE-006-f5",
+    "behavior": "The refusal names the page and the damaged object, reuses PDFModifierError with the existing details convention, and leaves no half-written output file.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_planted_loss_is_caught_by_the_consequence_check tests/unit/core/test_replacement_preserves_following_lines.py::test_the_refusal_names_the_page_that_holds_the_loss -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 2 passed. The planted-loss row asserts details carry page/object/characters and that no output file is written; the second row puts the loss on page 3 of a three-page document and asserts the refusal names page 3, because every other row in the file is one page and a refusal that always said \"page 1\" would have passed them all (mutation M7: 1 failed, 42 passed). A first review found this entry named test_the_refusal_names_the_damaged_object_and_writes_no_output, which does not exist; the assertions live inside the planted-loss row, and the page is now its own row."
+  },
+  {
+    "id": "CORE-006-f6",
+    "behavior": "The existing suite passes unchanged and the extra cost is measured and stated: one more page-text read per page with a replacement, against CORE-005's 1.35 s for 70 matches on an 840-span page.",
+    "verification": "cd backend && uv run pytest -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 429 passed, 19 skipped. Cost: the check adds +0.08 s (+3 %) on 840 spans / 70 matches (2.95 s against 2.87 s); two independent reviews measured +0.7 % and +2.0 % on their own pages, the same order. The conversion as a whole is +29 % slower than at the base commit (1.26 s -> 1.63 s on the same page), which is CORE-001's trim rewrite plus this check and belongs to CORE-005 (`#202`) to recover; measured by the second signature, recorded here rather than outside the spec."
+  }
+]

@@ -476,9 +476,11 @@ leading=14.0 wm_y=140 wm_first=True:  OK lost=[]   (and 7 more, all OK)
 
 Pinned by four rows (`test_a_large_object_behind_the_text_does_not_decide_whether_the_page_converts`), with the watermark-last variants as controls. RED, restoring the first-containing-span rule: exactly the two watermark-FIRST rows fail and the controls stay green — a mutation that pins the fix rather than the symptom.
 
-### Open: below about 0.72 em the same root cause still loses lines SILENTLY
+### CLOSED by CORE-006: below about 0.72 em the same root cause used to lose lines SILENTLY
 
-The same misidentification has a second shape, which this round did **not** fix. With the leading under about 0.72 em it is the *neighbour* whose box contains the centre, so the loop skips it as "the target", and the real target's neighbours are redacted with no error:
+> **Closed 2026-10-13 by CORE-006** (`specs/archive/CORE-006-verify-by-consequence/`, archived at `fb6f87a`), which implemented the design argued for at the end of this section: the consequence is verified instead of the rectangle being predicted. The reproduction below is kept as the record of what was wrong, and `f9` in `features.json` no longer carries it as open. What was reproduced:
+>
+> The same misidentification has a second shape, which this round did **not** fix. With the leading under about 0.72 em it is the *neighbour* whose box contains the centre, so the loop skips it as "the target", and the real target's neighbours are redacted with no error:
 
 ```
 $ uv run python /tmp/sub07.py
@@ -488,7 +490,7 @@ cobo 12/8.4 (0.70): converted lost=['ROW03']   new=True
 helv 11/4.95 (0.45): converted lost=['ROW03', 'ROW05'] new=True
 ```
 
-**It is not a regression**: the base commit loses the same lines at the same leadings, and `f9` in `features.json` now says so instead of claiming the whole sub-glyph-height range is refused. It is a REAL Major against this spec's own acceptance criterion ("a replacement must not drop the lines that follow it"), it is reproduced above, and it is filed as CORE-004 (`#201`), raised from THEORETICAL to REAL by the reproduction.
+**It was not a regression**: the base commit loses the same lines at the same leadings. It was a REAL Major against this spec's own acceptance criterion ("a replacement must not drop the lines that follow it"), reproduced above and filed as CORE-004 (`#201`), raised from THEORETICAL to REAL by the reproduction. **CORE-006 closed it**: at 0.45, 0.60 and 0.70 em the pages now REFUSE (`would lose 9 character(s) of another text object`), at 0.75/0.78 em this spec's trim guard refuses as before, and at 0.83 em and above nothing is lost and the conversion proceeds. The identification defect itself is still CORE-004's; what changed is that a wrong identification can no longer drop a line in silence.
 
 ### What was tried, and why it was reverted
 
@@ -498,13 +500,126 @@ Three attempts, all reverted, recorded so the next session does not repeat them:
 2. **Deriving the axis from which overlap dominates** (share of the line width ⇒ stacked, otherwise beside). Fails the co-located rows: a stamp nested inside the value shares most of the line width, so a same-line object was told to trim on y, and 19 existing rows went red.
 3. **Skipping the identified target instead of whatever holds the centre** (`span is target`), keeping the axis rule. Closes nothing and re-opens Major 1: the watermark then becomes a neighbour to trim against, and every watermark page refuses again.
 
-### The design this spec now argues for instead
+### The design this spec argued for instead, and which CORE-006 shipped
 
-Trimming *predicts* which rectangle is safe and has now failed four review rounds in different geometry. The alternative is to check the consequence instead of predicting it: apply the redaction to the page, re-read the page's text, and refuse if any line that was not the target lost characters — the same shape as `#182`'s lesson that exit status is not evidence and the changed artifact is. It is finite, geometry-independent, and testable at every leading from 0.45 em to 1.27 em, which is exactly where the prediction keeps failing. It is **not** implemented here: it is a change to how the page is processed, not a repair of the defect this spec was opened for, and it needs its own ADR-014 justification and its own review. Recorded as the recommended option in CORE-004 (`#201`).
+Trimming *predicts* which rectangle is safe and has now failed four review rounds in different geometry. The alternative is to check the consequence instead of predicting it: apply the redaction to the page, re-read the page's text, and refuse if any line that was not the target lost characters — the same shape as `#182`'s lesson that exit status is not evidence and the changed artifact is. It is finite, geometry-independent, and testable at every leading from 0.45 em to 1.27 em, which is exactly where the prediction keeps failing. It was **not** implemented here: it is a change to how the page is processed, not a repair of the defect this spec was opened for, and it needed its own ADR-014 justification and its own review. Recorded as the recommended option in CORE-004 (`#201`), then specified and built as **CORE-006** -- including the two rounds of its own second signature that found the attribution Major, the two-predicate confusion and the whitespace rule.
 
 ### Verdict of this round
 
 CORE-001 is **not archived**. One of the second signer's two Majors is closed with a regression row and a precise RED; the other is reproduced, honest in `features.json`, and ticketed. The archive gate needs a fresh review of both signatures anyway (§ "a review is not recyclable"), so nothing is gained by archiving ahead of that.
+
+## Round 6 (first signature, `nan/qwen3.8-flash` at `8b071e9`): FAIL on a claim, not on the code
+
+The reviewer could not break the code -- every row passes, and each of the three neutralisations it ran produced exactly the failure counts this spec records -- and failed the spec on one REAL Major in `proposal.md`: `review_round` asserted a round-6 PASS and a second-signature round-3 PASS that no artifact supports. Those rounds exist, but in **CORE-006's** spec folder (`specs/archive/CORE-006-verify-by-consequence/review-round-3.md`, `review-second-round-2.md`); this spec's committed verdicts stop at round 5 / second round 2, at shas that are not this head, and `tasks.md` in the same commit left round 6 open. **A completion claim about the review gate, made without the artifact the gate reads.** Corrected here: `review_round` names only the rounds with a committed verdict, and round 7 is owed after this fix rather than asserted.
+
+Its remaining findings are dispositioned rather than absorbed:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 2 | The probe counts recorded in `tasks.md`/`features.json` no longer reproduce: 125 fits / 15 refused trims recorded, **145 / 18** measured at this head. | **Applied.** The line below is the probe at the head being archived. The reviewer is right that the qualitative claim survives while the numbers moved: the `1 collapsed` and `1 unidentified` are the guard's own synthetic rows, and no real document appears in either. `features.json` f5/f8 are contract and keep their own wording; this is the record. |
+| 3 | `tasks.md` fix-round 5 claims `ruff format --check` passes for BOTH ruff versions; the venv's 0.15.5 wants to reformat `backend/tests/unit/harness/test_reviewer_pool_contract.py`, a file that predates this spec. | **Applied as a correction**: the claim holds for the files this spec touches (verified under both versions), not repo-wide, and the one file it does not hold for is CI-004 (`#203`) -- the version skew that ticket files, now reproduced from a third direction. `make check` runs neither formatter, which is why it is green. |
+| 4 | The trim loop mutates `trimmed` per neighbour, so with two asymmetric neighbours the verdict can depend on span order; no fixture has two neighbours. | **Ticketed**: CORE-009 (`#211`), with the order-symmetry row it needs. Loud-failing only -- CORE-006's check refuses rather than losing a line. |
+| 5 | Two predicates express "same line": `_same_line` (extent >= 0.9) and the centre-containment test in `_refuse_trim_that_drops_another_line`. | **Ticketed**: CORE-009 (`#211`), same ticket -- a hidden cross-file dependency written as two similar names. The outcome is pinned by the 0.45-1.30 em sweep, so it is not a live hole. |
+| 6 | `missing_untouched_lines` is membership-based, so a duplicate-line fixture would hide a dropped copy. | **Ticketed**: recorded in CORE-009 (`#211`) as surface-only; production is per-glyph, and no fixture has repeated lines. |
+| 7 | `f6`'s "the diff adds the one regression file" is true of this spec's commits and false of the range this review read (which carries `#197`'s rename-guard change and others). | **Applied**: the sentence is scoped to this spec's own commits in this file, which stays the record; `features.json` f6 keeps its wording because the contract set is closed under a passing verdict, and verification.md is where the scope is stated. |
+
+### The probe at this head
+
+```
+$ PYTHONPATH=scripts uv run pytest -q --no-cov -p probe_fitter_reachability
+429 passed, 19 skipped
+PROBE {'fits': 145, 'refused_trims': 18, 'unidentified': 1, 'collapsed': 1, 'identified_misses': 1}
+```
+
+## Second signature round 1 (`anthropic-review/claude-sonnet-5-5` at `a1b4ae8`): FAIL, one REAL Major — FIXED here
+
+**The Major was a regression against the base commit, and it is reproduced.** A tight block whose fields are ALL being replaced -- three 12 pt lines at 9 pt leading (0.75 em) -- converted in the base and was **refused** at HEAD, with no workaround, because replacing one field at a time is refused too, by design. `_refuse_trim_that_drops_another_line` raised when a refused trim left the rectangle reaching a neighbour on another line **without asking whether that neighbour was itself a replacement target**. A target's characters are removed by design, its replacement is re-inserted, and the consequence check exempts it for exactly that reason, so nothing was being dropped and the refusal was false.
+
+**Fixed**: the page's target objects are decided once, before any fitting, and passed to the guard, which skips a neighbour in that set. `_fit_redaction_to_its_own_text_object` now also takes the page's already-parsed spans instead of re-parsing them -- required for the identities to match, and it removes one page parse per *rectangle*, which is the cost CORE-005 (`#202`) tracks. Rows: `test_a_tight_block_whose_fields_are_all_replaced_still_converts` (RED first: `REFUSED`), with the counter-row `test_a_tight_block_is_refused_rather_than_losing_the_line_below` still refusing, so the guard keeps its original purpose. Mutation M15 (the exemption removed) turns exactly the new row red.
+
+Its remaining findings, dispositioned:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 2 | The fit is quadratic: 70 literals on an 840-span page went 0.10 s -> 1.32 s (13x), one regex over 840 spans 4.07 s -> 23.2 s (5.7x); caching the spans alone (done here) took 23.2 s to 9.9 s, so a real fix needs spatial filtering. | **Ticketed**, CORE-005 (`#202`), which now carries these figures as the baseline it must beat. The span caching above is part of the answer, not all of it. |
+| 3 | The height clause of `_removes_glyph` was unpinned: forcing it to `True` left every unit test green. | **Applied**: `test_removal_needs_the_rectangle_to_reach_the_glyph_on_both_axes`, which fails under exactly that mutation (M16 -> 1 red). |
+| 4 | `features.json` f3/f6 evidence had drifted (28/409 recorded; 50/431 at this head), and `verification.md`'s round numbering is inconsistent with `proposal.md` and `tasks.md` (two different "Round 6"s). | **Applied**: both counts re-measured in the entries above. The numbering is historical -- this file records rounds as they happened, `tasks.md` renumbers them per fix round -- and is called out here rather than silently reconciled. |
+| 5 | The reviewed range carries content from other specs (the release workflow, Dockerfile, `.gitignore`, the Dependabot check, Glama, the rename-guard exclusion, and CORE-006 itself). | **Recorded**: already disclosed above and in `features.json` f6's scope, which this file scopes to the spec's own commits. The reviewer did not escalate it. |
+
+## Round 8 (first signature, `nan/deepseek-v4-flash` at `7ad75cf`): PASS WITH GAPS
+
+The round that reviewed the exemption fix could not break it: it tried the partial-span hypothesis (the most promising silent-loss path against an identity-keyed exemption), the three constructions stayed clean, and M15 turned exactly the new row red. Its findings are bookkeeping and two test gaps, dispositioned here because all three of the files it names (`proposal.md`, `tasks.md`, `features.json`) are contract and a passing verdict closes them:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | `features.json` f5/f8 still record "125 fits" / "1 unidentified in 121 fits"; the probe at this head reports **152 fits / 21 refused trims**. | **Applied here**: the line below is the probe at the head being archived. The probe is the measurement and `features.json` is contract, so this file carries it, exactly as the reviewer asked. |
+| 2 | `tasks.md` has no entry for `7ad75cf` (the second signature's Major, its exemption fix and its two new rows), its round-6 box is still open, and `proposal.md`'s `review_round: 6` understates the verdicts that exist (round 7 PASS at `a1b4ae8` by `nan/glm5.3-flash`). | **Applied here as the ledger** -- see "Review rounds, as they happened" below. The contract files stay untouched under this verdict, which is what the reviewer recommended. |
+| 3 | The exemption is keyed on `id(span)` while `targets` and `spans` are independently optional, so a caller that mixes two parses switches it off silently -- fail-loud, since the guard then refuses as it did before the fix, but nothing asserted the pairing. | **Applied**: `test_the_target_exemption_needs_targets_and_spans_from_one_parse`, which drives the real tight-block geometry both ways (two parses -> refusal, one parse -> exempt). M15 is now 2 red. |
+| 4 | The exemption is at SPAN granularity while a replacement can target a substring, so characters of a partially replaced neighbour reached by another rectangle could be exempted by identity and never re-inserted. Not reproducible in three attempts. | **Applied**: `test_a_partially_replaced_neighbour_span_keeps_its_prefix` pins the direction (a `PREFIX`+value line with only the value replaced keeps both prefixes and both replacements), rather than leaving the gap to inference. |
+
+### Review rounds, as they happened
+
+`tasks.md` numbers rounds per fix round and this file numbers them per review run; `proposal.md` counts only verdicts with a committed artifact. The ledger, all at branch heads of this change:
+
+| Round | Reviewer | Head | Verdict |
+|---|---|---|---|
+| 1 | `nan/mimo-v2.6-flash` | `f1dd8ea` | FAIL -- one REAL Blocker |
+| 2 | `nan/deepseek-v4-flash` | `a7ef1a2` | FAIL -- one REAL Major |
+| 3 | `nan/deepseek-v4-flash` | `d748a43` | FAIL -- two REAL Majors |
+| 4 | `nan/glm5.3-flash` | `a479628` | PASS |
+| 5 | `nan/deepseek-v4-flash` | `f7b1324` | PASS |
+| 6 | `nan/qwen3.8-flash` | `8b071e9` | FAIL -- a REAL Major in `proposal.md`: rounds that belong to CORE-006 claimed here |
+| 7 | `nan/glm5.3-flash` | `a1b4ae8` | PASS |
+| 8 | `nan/deepseek-v4-flash` | `7ad75cf` | PASS WITH GAPS (this round) |
+| second 1 | `anthropic-review/claude-sonnet-5-5` | `a479628` | FAIL -- tight leading |
+| second 2 | `anthropic-review/claude-sonnet-5-5` | `bae62bd` | FAIL -- watermark order, sub-0.72 em |
+| second 3 | `anthropic-review/claude-sonnet-5-5` | `a1b4ae8` | FAIL -- the exemption fixed above |
+
+### The probe at this head
+
+```
+$ PYTHONPATH=scripts uv run pytest -q --no-cov -p probe_fitter_reachability
+433 passed, 19 skipped
+PROBE {'fits': 152, 'refused_trims': 21, 'unidentified': 1, 'collapsed': 1, 'identified_misses': 1}
+```
+
+The two counts that are not `fits` are still the guard's own synthetic rows -- the unreachable-collapse stub and the unidentifiable stub -- so the climb from 125 to 152 fits reflects the rows this change added, not a corpus that became harder to convert.
+
+## Second signature round 4 (`anthropic-review/claude-sonnet-5-5` at `e2071e4`): PASS WITH GAPS
+
+The reviewer could not break the fix under rotation (receipt fixture at 0/90/180/270 degrees), rotated text (11/13/16 pt leading), or about 1100 fuzzed pages: no silent neighbour loss, and every refusal it inspected had a base-version loss behind it. 124 refusals, all at <= 0.7 em, all pages the base dropped lines on; nothing refused at 0.8 em or above. Its findings, dispositioned:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | **Major, THEORETICAL**: the IoU branch of `_target_span` is pinned by nothing -- every fixture builds a rect equal to a span's bbox, so the identical-bbox early return always fires. Replacing the score with "first intersecting span wins" left the suite green. | **Applied**: `test_the_target_is_chosen_by_overlap_not_by_being_the_first_to_intersect`, with a page-sized span drawn before the real one. Mutating the score to `1.0 if rect.intersects(other) else 0.0` (M18) fails exactly that row. |
+| 2 | **Major, THEORETICAL**: `all(...)` in `_dispose_of_lost_characters` is pinned by nothing; mutating it to `any(...)` left 52 tests green, although the docstring is explicit that accepting an object because *some* of its characters were co-located would readmit the defect through the middle of the span. | **Applied**: `test_a_loss_only_partly_explained_by_a_co_located_rectangle_is_refused`, which hands the decision three lost glyphs, two explained by a co-located rectangle and one by a rectangle on another line. M19 (`all` -> `any`) fails exactly that row. |
+| 3 | **Minor, REAL**: the 90 % same-line test is a cliff -- a page whose watermark overlap falls just under it is refused where the base converted lossily, the outcome flips on the threshold, there is no user override, and the message says "no fitted rectangle spares it" about an object whose ink is merely behind the line. | **Applied as a record + tracked**: the cliff is now stated in ADR-015 as the accepted boundary rather than left to the code, and the user-visible escape hatch is CORE-011 (`#213`) -- refusing to make a product decision inside a fix. Mutating `shorter * 0.9` to `0.99` survives (the cliff is real), to `0.3` fails 6 rows. |
+| 4 | **Minor, REAL**: the fit is ~7x the base on a dense page (60 replacements over 840 spans: 0.67 s against 0.09 s). | **Already ticketed**: CORE-005 (`#202`), which carries this measurement beside the two others. |
+| 5 | **Minor, REAL**: `modifier.py` grows 674 -> 1181 lines inside a class already over the repo's 250-line threshold, and the new helper cluster could live in a sibling core module. | **Applied as ticket**: CORE-011 (`#213`) covers both the size/refactor question and the refusal escape hatch, which is the same "the class and its policy are one thing" observation. `ruff check --select C901` at 10 passes, so no function is over the complexity limit. |
+| 6 | **Minor, REAL**: stale counts and ticks in the contract set (f6's "431 passed", "no pre-existing test modified", unticked acceptance boxes, the unticked round-6 task). | **Applied here**: `verification.md` carries the ledger, the probe and the current counts; the contract files stay closed under this verdict, which is what the reviewer asked. |
+| 7 | **Question**: the reviewed range includes already-merged master work (`Dockerfile`, `release.yml`, `#187`-`#207`). | **Confirmed**: a base-resolution artefact of the stacked branch, not claimed scope. The PR bodies list the union per commit, and `git log 01624dee..HEAD` attributes each. |
+
+### Review rounds, second signature
+
+| Round | Reviewer | Head | Verdict |
+|---|---|---|---|
+| 1 | `anthropic-review/claude-sonnet-5-5` | `a479628` | FAIL -- tight leading |
+| 2 | `anthropic-review/claude-sonnet-5-5` | `bae62bd` | FAIL -- watermark order, sub-0.72 em |
+| 3 | `anthropic-review/claude-sonnet-5-5` | `a1b4ae8` | FAIL -- the target exemption |
+| 4 | `anthropic-review/claude-sonnet-5-5` | `e2071e4` | PASS WITH GAPS (this round) |
+
+## PR review triage (the `## Review triage` comments on #190 and #208)
+
+Both open PRs were reviewed by bots and triaged; the dispositions are posted on the PRs and summarised here because two of them produced rows in this spec's file:
+
+| Source | Finding | Disposition |
+|---|---|---|
+| CodeRabbit, #190 | `_refuse_unidentified_target`'s message still described the removed centre-containment rule, which is false for a span that overlaps and has no character boxes. | **Applied** on the base branch (`4f1bd34`), keeping the "cannot be identified" substring the test and the probe match on. |
+| PR-Agent, #190 | `not other.intersects(trimmed)` in the refusal guard is dead code -- the caller reaches it only when the neighbour IS reached. | **Applied** (`4f1bd34`): removed, with the two live exemptions named. |
+| PR-Agent, #190 | The probe counts a raising refusal in `fits` and in no other bucket. | **Declined**: `_refuse` increments `refused_trims` before delegating and is registered in `_PATCHERS`, so the path is counted; `fits` counts attempts by design. The probe now states the units, which was the misreading behind the finding. |
+| PR-Agent, #208 | The ailing-range rows return early on refusal, so a regression refusing the whole range would pass every one of them. | **Applied**: `test_the_safe_leadings_still_convert`. Verified by making every fit refuse, which fails the new row 3 times and the ailing rows 0 times -- the vacuity was real, not theoretical. |
+| PR-Agent, #208 | The exemptions are span-level while a replacement can target a substring. | **Ticket**: CORE-010 (`#212`), with four recorded attempts (including this spec's own 0.58/0.67/0.75 em tight-leading one) and the recommended per-glyph fix. |
+| CodeRabbit, #208 | -- | **No review ran**: auto-reviews are disabled for non-default base branches, so #208 is unreviewed by CodeRabbit and PR-Agent is its only reviewer. Disclosed rather than left implicit. |
 
 ## ADR-014 conditions
 

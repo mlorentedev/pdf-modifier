@@ -18,7 +18,7 @@
     "behavior": "No fragment of the replaced value is left on the page -- asserted on every row twice: as a two-character text window, and at the level of the output's own text objects, because a ONE-character residue (round 3's Finding 1) is invisible to the window and to line-level inclusion. Set inclusion cannot see a line that survived PARTIALLY: that is an extra line, not a missing one.",
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 28 passed in the file. RED with the coverage rule neutralised alone: 10 failed (the 9 overlap rows + the guard), everything else green."
+    "evidence": "passed: 50 passed in the file at this head (28 when this row was written, before CORE-006's rows landed). RED with the coverage rule neutralised alone: 10 failed (the 9 overlap rows + the guard), everything else green. The count is re-measured here because an earlier review found it stale."
   },
   {
     "id": "CORE-001-f4",
@@ -39,7 +39,7 @@
     "behavior": "AC5: the existing suite passes unchanged -- this repairs a defect, it does not change intended behaviour. No pre-existing test is modified or deleted; the diff adds the one regression file.",
     "verification": "cd backend && uv run pytest -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 409 passed, 19 skipped; `make check` green, coverage 84.88%, ruff and mypy --strict clean."
+    "evidence": "passed: 431 passed, 19 skipped at this head; `make check` green, ruff and mypy --strict clean. Measured when this row was written: 409 passed at 84.88% coverage. Both counts re-measured here because a review found the recorded ones stale."
   },
   {
     "id": "CORE-001-f7",
@@ -57,10 +57,10 @@
   },
   {
     "id": "CORE-001-f9",
-    "behavior": "A block whose leading is tight against its glyph height is REFUSED rather than converted with a line lost, over the range this spec tests: 12 pt on 9 pt (0.75 em) and 9 pt on 7 pt (0.78 em). Below about 0.72 em the fitter still misidentifies which object is being replaced and the loss is SILENT — reproduced by the second signer (two lines lose characters at 0.45-0.70 em, no error) and NOT fixed here, because the fix that closes it re-opens the large-object case below: one root cause, two shapes, and the identification change is what this revision carries. Filed as CORE-004 (#201), raised from THEORETICAL to REAL by that reproduction.",
-    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_tight_block_is_refused_rather_than_losing_the_line_below -q --no-cov",
+    "behavior": "A block whose leading is tight against its glyph height is REFUSED rather than converted with a line lost, over the whole tight range, by two mechanisms behind one guarantee. This spec's trim guard refuses 12 pt on 9 pt (0.75 em) and 9 pt on 7 pt (0.78 em); CORE-006's consequence check refuses every tighter leading whose redaction would cost a neighbouring line its characters. 0.45, 0.60 and 0.70 em used to convert and lose two lines SILENTLY -- the second signer's reproduction, recorded in verification.md -- and they now refuse, naming the page and the object. At 0.83 em and above nothing is lost and the conversion proceeds. The identification defect that made the tight leadings lose lines is CORE-004 (#201), closed by verifying the consequence instead of repairing the identification; that mechanism is specified at `specs/archive/CORE-006-verify-by-consequence/`.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_tight_block_is_refused_rather_than_losing_the_line_below tests/unit/core/test_replacement_preserves_following_lines.py::test_no_leading_in_the_ailing_range_loses_characters_silently -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 2 passed (12pt-on9pt, 9pt-on7pt) — the tested range only. RED with the refusal neutralised: 2 failed / 26 passed, and the silent output is ['keepkeep0','keepkeep1','keepkeep2','p4',...]. The sub-0.72 em range is NOT pinned: it converts and loses lines, which is the open Major (#201)."
+    "evidence": "passed: 9 passed (the 2 tight-block rows at 0.75/0.78 em plus the 7-lead sweep from 0.45 to 1.30 em, which CORE-006 added). M1 (the consequence check neutralised) turns 8 rows red, three of them sweep rows: 0.45/0.60/0.70 em lose ['keepkeep2', 'keepkeep4'] with no error and no warning -- the reproduction this entry used to carry as an OPEN Major. The claim is now about the whole tight range; the previous wording said the sub-0.72 em range was not pinned and converted lossily, which stopped being true when CORE-006 landed at 65d2eef."
   },
   {
     "id": "CORE-001-f10",

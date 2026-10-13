@@ -1,12 +1,12 @@
 ---
 id: "CORE-001"
 type: spec
-status: verifying # draft | implementing | verifying | archived
+status: archived # draft | implementing | verifying | archived
 created: "2026-10-13"
 issue: "mlorentedev/pdf-modifier#179"   # repo#NNN — GitHub issue / Project item that tracks this spec
 risk: high   # the change lands inside core/modifier.py, which every other component trusts; the round-1 review's Blocker is why the declaration is machine-readable, not prose
 review: required
-review_round: 4   # rounds 1-3 (nan/mimo-v2.6-flash, then nan/deepseek-v4-flash x2) returned FAIL; a review is not recyclable, so each round is relaunched against the frozen head
+review_round: 6   # ONLY the rounds with a committed verdict: 1-3 FAIL (nan/mimo-v2.6-flash, then nan/deepseek-v4-flash x2), 4 PASS (nan/glm5.3-flash), 5 PASS (nan/deepseek-v4-flash, f7b1324), 6 FAIL (nan/qwen3.8-flash, this head -- a REAL Major in this file's own frontmatter, below). A review is not recyclable, so each round is relaunched against the frozen head; round 7 is owed after the fix and is not claimed here.
 tags: [spec, proposal]
 template_version: "1.0"
 ---
