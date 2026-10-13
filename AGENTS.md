@@ -5,7 +5,7 @@
 
 ## Project Overview
 
-**PDF Modifier MCP** allows text modification in PDFs while preserving layout and fonts.
+**PDF Modifier** allows text modification in PDFs while preserving layout and fonts.
 
 - **Stack**: Python 3.12+, PyMuPDF (fitz), Typer, FastMCP, Pydantic v2; SvelteKit 5 + pdf.js frontend.
 - **Version**: owned by release-please — see `.release-please-manifest.json` (never hardcode it here).

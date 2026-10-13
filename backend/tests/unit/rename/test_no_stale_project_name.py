@@ -16,9 +16,14 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-# The retired identity. One spelling, so a second one cannot hide by looking
-# different.
-RETIRED_NAME = "pdf-modifier-mcp"
+# The retired identity, in BOTH spellings it ships in -- and the second one is
+# the reason this is a tuple. The slug `pdf-modifier-mcp` is what a package
+# manager resolves; `PDF Modifier MCP` is what a human reads. The second survived
+# the first pass of this rename in AGENTS.md's opening line while this guard
+# reported success: it was looking for one string in a file that used the other.
+# A slug and its prose form are the same identity, so a rename that moves one and
+# not the other is half a rename that reports as whole.
+RETIRED_NAMES = ("pdf-modifier-mcp", "PDF Modifier MCP")
 
 # The guard's own path, as a constant so the exclusion key fits on one line.
 GUARD_FILE = "backend/tests/unit/rename/test_no_stale_project_name.py"
@@ -75,7 +80,7 @@ def stale_references(
     return sorted(
         path
         for path, text in contents.items()
-        if RETIRED_NAME in text and not is_excluded(path, exclusions)
+        if any(name in text for name in RETIRED_NAMES) and not is_excluded(path, exclusions)
     )
 
 
@@ -108,19 +113,20 @@ def test_no_live_reference_to_the_retired_name() -> None:
     """The repo is renamed everywhere a user, an installer or CI can read it."""
     problems = stale_references(tracked_contents())
     assert not problems, (
-        f"these tracked files still name the project {RETIRED_NAME!r}, and none of them "
+        f"these still name the project {RETIRED_NAMES} (either spelling), and none "
         f"is a declared historical record:\n  " + "\n  ".join(problems)
     )
 
 
 def test_guard_catches_a_planted_live_reference() -> None:
     """The guard must trip on a real occurrence, or it is a green check that scans nothing."""
-    assert stale_references({"README.md": f"install {RETIRED_NAME}"}) == ["README.md"]
+    assert stale_references({"README.md": f"install {RETIRED_NAMES[0]}"}) == ["README.md"]
+    assert stale_references({"AGENTS.md": "**PDF Modifier MCP** tool"}) == ["AGENTS.md"]
 
 
 def test_guard_ignores_a_declared_exclusion() -> None:
     """A record that names the old identity is the past, not a defect."""
-    assert stale_references({"docs/lessons/lesson-001-x.md": RETIRED_NAME}) == []
+    assert stale_references({"docs/lessons/lesson-001-x.md": RETIRED_NAMES[0]}) == []
 
 
 def test_every_exclusion_states_why_it_is_a_record() -> None:
