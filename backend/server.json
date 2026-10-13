@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "pdf-modifier",
-      "version": "1.9.0",
+      "version": "1.9.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
