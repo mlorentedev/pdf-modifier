@@ -35,9 +35,15 @@ The rectangle-fitting heuristic stays, demoted: it is now an *optimisation that 
 - One more page read per page with a replacement: measured at **+0.08 s (+3 %)** on a 840-span page with 70 matches, beside the per-rectangle parse CORE-005 (`#202`) tracks at 1.35 s.
 - The check itself cannot be argued away by geometry, so a future fitter rewrite inherits it unchanged: whatever the rectangle logic does, the outcome is verified.
 
+**Two limits of this check, stated rather than implied:**
+
+- **"Co-located" is a proxy for "unavoidable".** It is decided by a shared vertical band (>= 90 % of the shorter box), not by asking, per lost glyph, whether some rectangle could have covered the target and missed it. So a same-line neighbour whose characters a rectangle *could* have spared is warned where it should be refused. The loss is still reported, which is the promise above; tightening the classification is a new prediction about geometry and is tracked as CORE-007 (`#209`) rather than absorbed here.
+- **The guard sees text, not graphics.** The comparison is glyph by glyph, so a redaction that costs line art (a rule, a border, a chart line) is invisible to it -- `apply_redactions` keeps the default `graphics` behaviour. The component promises not to drop *text* objects, and this is where that promise ends.
+
 ## Alternatives rejected
 
 - **Keep predicting, and enumerate the geometries.** This is what four review rounds did, one reproduction at a time; each fix was correct for its shape and blind to the next, and the failures landed on content rather than on a test. A prediction with no finite argument cannot be closed by adding cases.
 - **Refuse whenever a non-target object loses any character.** Simple and safe, but it fails documents whose ink genuinely cannot be separated — a label over a value, a stamp over the field — where the user cannot change the input and the previous behaviour was to convert. That case is accepted and *reported* instead.
 - **Warn instead of refusing, for every loss.** Cheaper, and it removes the silence. Rejected because a line that follows the replaced text is exactly what this component promises not to drop: a warning on a file that silently differs from its input makes the promise unenforceable, and the caller has no way to repair the page.
+- **Decide unavoidability per glyph (do it now).** The correct rule: for each lost character, ask whether a rectangle covering the target's own ink can miss it; refuse if it can. Rejected *at this spec's scale* rather than in principle -- it is a new prediction about geometry, the thing this ADR demotes, it changes which real documents convert, and the only instance found on a real document was a whitespace span. Tracked as CORE-007 (`#209`) with the recommended shape and the fixture it needs.
 - **Report the loss only in the logs.** Logs are not part of the API contract; `ModificationResult.warnings` already existed and reaches every interface (CLI, MCP, HTTP, batch) without a contract change.

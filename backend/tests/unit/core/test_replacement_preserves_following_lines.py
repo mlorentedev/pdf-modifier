@@ -719,3 +719,46 @@ def test_the_accepted_co_located_loss_is_reported_as_a_warning(tmp_path: Path) -
     reported = any("page 1" in warning for warning in result.warnings)
     assert reported, f"the accepted co-located loss must be reported: {result.warnings}"
     assert read_lines(out), "the conversion still has to produce a document"
+
+
+def write_a_tight_block_after_two_benign_pages(path: Path, *, font: float, leading: float) -> None:
+    """The same hostile block, on the THIRD page.
+
+    Every other row in this file is one page, so "the refusal names the page" was
+    only ever proven for page 1: a check that named the first page by accident
+    would pass all of them. The two pages before it carry text, so the loss this
+    row is about is three pages into the document and is not the first thing the
+    page loop touches.
+    """
+    doc = fitz.open()
+    for index in range(2):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 72), f"page {index + 1} header", fontname="cobo", fontsize=9)
+        page.insert_text((72, 83), f"ARC: 00{index}", fontname="cobo", fontsize=9)
+    page = doc.new_page(width=612, height=792)
+    for index in range(TIGHT_LINES):
+        text = TARGET if index == TIGHT_TARGET_LINE else f"keepkeep{index}"
+        page.insert_text((72, 72 + index * leading), text, fontname="cobo", fontsize=font)
+    doc.save(str(path))
+    doc.close()
+
+
+def test_the_refusal_names_the_page_that_holds_the_loss(tmp_path: Path) -> None:
+    """The page in `details` and in the message is the one that lost the characters.
+
+    A refusal the user can act on has to say WHERE: a document of forty pages that
+    reports "page 1" is a refusal nobody can act on, and the check reads one page
+    at a time, so the page it names is a value it can get wrong.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_a_tight_block_after_two_benign_pages(src, font=12.0, leading=7.2)
+
+    with pytest.raises(PDFModifierError) as raised:
+        PDFModifier(str(src), str(out)).process(
+            ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+        )
+
+    named = raised.value.details["page"]
+    assert named == 3, f"the refusal named page {named}, and the loss is on page 3"
+    assert "page 3" in str(raised.value), f"the message must say which page: {raised.value}"
+    assert not out.exists(), "a refused conversion must not leave a half-written document"

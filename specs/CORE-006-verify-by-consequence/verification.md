@@ -34,9 +34,9 @@ Each acceptance criterion from `proposal.md`, with the proof produced in this se
 
 ## Test status
 
-- `uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov` -> **42 passed**
+- `uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov` -> **43 passed**
 - `uv run pytest tests/unit/core -q --no-cov` -> **219 passed, 11 skipped**
-- `make check` -> **423 passed, 19 skipped, coverage 85.27 %**, `ruff check` and `mypy --strict` clean
+- `make check` -> **424 passed, 19 skipped, coverage 85.31 %**, `ruff check` and `mypy --strict` clean (the coverage figure was 85.27 % before the multi-page row below; a first review measured 85.31 % and was right)
 - `ruff format --check …modifier.py …test_replacement_preserves_following_lines.py` -> clean, under BOTH the venv's ruff and the pinned hook (the two disagree elsewhere in the repository: CI-004, `#203`)
 - No regressions: the pre-existing rows were not modified; the only edits to existing code are `missing_untouched_lines` gaining an optional `replaced` argument (see below, where its absence caused a false RED) and `_apply_replacements_to_page` gaining the before/after capture.
 
@@ -54,6 +54,38 @@ FAILED ...::test_the_accepted_co_located_loss_is_reported_as_a_warning
 ```
 
 The two rows that must fail for the *right* reason did: `['keepkeep2', 'keepkeep4']` is the loss the second signer reproduced, printed by the row itself. The planted-loss row and the warning row fail because neither the check nor the warning exists yet.
+
+## Mutation matrix
+
+Each row neutralises one thing and counts the tests that notice. Run by a first review at `4b5d9b4` (`nan/qwen3.8-flash`) and re-run here for M7, which this revision added; a mutation that turns nothing red is a claim nothing checks.
+
+| # | Mutation | Rows red | What it shows |
+|---|---|---|---|
+| M1 | `_check_no_other_object_lost_characters` -> immediate `return` | **6** | The consequence check is load-bearing: three sweep rows, the 0.60 em row, the planted-loss row and the warning row all go red. It is not decoration beside the fitter. |
+| M2 | `_refuse_trim_that_drops_another_line` -> no-op | **2** | CORE-001's refusal guard is pinned by both params of `test_a_tight_block_is_refused_rather_than_losing_the_line_below`. |
+| M3 | `_same_line` threshold 0.9 -> 0.5 | **4** | The 90 % band is pinned, including by the 0.60 em row. |
+| M4 | `_same_line` -> `False` (never accept) | **18** | The accept-list is what keeps documents converting: refusing every co-located loss fails 18 rows. This is the cost of getting the boundary wrong in the strict direction. |
+| M5 | `GLYPH_COVERAGE_FLOOR` 0.12 -> 0.20 | **2** | The floor's upper bound, via `test_a_slightly_tight_block_is_still_fitted_...`. |
+| M6 | `GLYPH_COVERAGE_FLOOR` 0.12 -> 0.02 | **5** | The floor's lower bound: below it, glyphs the redactor acts on are left uncovered. |
+| M7 | The refusal names page 1 unconditionally | **1** | `test_the_refusal_names_the_page_that_holds_the_loss` is the ONLY row that can see it, because every other row in the file is one page. Re-run here: `1 failed, 42 passed`. |
+
+## What this revision added on top of the reviewed one
+
+`4b5d9b4` was the reviewed head. This revision adds `test_the_refusal_names_the_page_that_holds_the_loss` (with its fixture), the M7 number above, this section, the provenance note below, and the corrected test ids in `features.json` that the review found non-existent. Those are the only changes, and the review that follows is at this head.
+
+## Provenance of the reviewed range
+
+This branch carries two specs. `git log 01624dee..HEAD -- backend/src/pdf_modifier/core/modifier.py` shows five commits rewriting the trim heuristics -- `1daac30`, `981bdc1`, `d0d43d4`, `afe11d4`, `29fe2f6`, 282 lines -- and those belong to **CORE-001**, which is the spec that opened this file under ADR-014's exception and whose acceptance criteria they satisfy. CORE-006's own commit is `4b5d9b4` (+119, the check and its rows). The range also carries `#204` (`scripts/check-dependabot-alerts.py`) and `#207` (CI-001's `tasks.md`), which are separate PRs stacked on the same branch for the same reason: they were the pieces that unblocked this one. AC6's "nothing opportunistic in the diff" therefore has to be read per commit, and this is the list.
+
+## The guard's visibility ends at glyphs
+
+`apply_redactions(images=PDF_REDACT_IMAGE_NONE)` keeps the default `graphics` behaviour, so a redaction can still cost **line art** (a rule, a border, a chart line) and this check cannot see it: it compares text, and text is what it promises. That is a declared limit, not an oversight -- `proposal.md` scopes to text objects -- but it belongs in writing rather than in the reader's inference. Filed with the other visibility questions in `#202`'s neighbourhood, not fixed here.
+
+## Open finding, tracked not absorbed
+
+The first review's one Major: "accepted co-located" is decided by the **vertical band** (`_same_line`, 90 % of the shorter box) rather than by whether the lost glyph was genuinely unreachable, so a same-line neighbour whose characters a rectangle *could* have spared is warned instead of refused. Reproduced as a *shape*, not as an avoidable loss -- and the only instance the review found on a real document (`frontend/e2e/fixtures/eval-doc.pdf` page 2) is a **whitespace span**, the `' '` between `Page` and `Two`, inspected here: it costs no visible content.
+
+Not fixed here, deliberately: deciding unavoidability per glyph is a new prediction about geometry -- the thing ADR-015 demoted the fitter away from -- and it changes which real documents convert, so it needs its own fixture, its own ADR-014 justification and its own review. The loss is *reported* in every case, which is the promise ADR-015 actually makes. Filed as **CORE-007 (`#209`)** with the fix options and the evidence; the review classified it Major / **THEORETICAL** and its verdict admits the archive with the gap tracked.
 
 ## Decisions made during implementation
 
