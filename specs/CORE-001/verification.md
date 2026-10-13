@@ -436,6 +436,20 @@ M6 is the answer to the second signer's sharpest methodological point -- "mutati
 | The two-candidate span-order path, and rotated text | **Already ticketed** | CORE-004 (`#201`), filed from the first signature's same finding; the second signature adds "rotated text is untested rather than demonstrated". |
 | Is leading/font below 0.8 in scope? | **Answered: yes** | The proposal says "tight page" and the corpus is thermal-receipt data, where 12 pt on 9 pt leading is plausible. Declaring it out of scope would have turned a reproduced content loss into a documented limit, so the code was changed instead. |
 
+## Round 7 — the fix reviewed: first signature PASS, and what it left
+
+The first signature after the fix (`nan/deepseek-v4-flash`, random draw from the pool) returned **PASS** at `f7b1324`. It re-measured the predicate itself (0.10 removes, 0.07 survives, both axes), reproduced `M6` turning the boundary row red by restoring the 0.15 floor, and confirmed the refusal names the line it protects. Its findings, each with a disposition:
+
+| Finding | Disposition | Where |
+|---|---|---|
+| The 0.12 floor is stricter than the measured 0.10, so a glyph covered by 10-12% is refused although the redactor would act — and a refusal can now raise, so the margin could turn a convertible document into a failure. No fixture demonstrates such a document. | **Recorded, no code change** | CORE-004 (`#201`). The margin is deliberate (a check stricter than the redactor fails safe) and the reviewer's own sweep shows the margin causes none of the *needed* refusals. |
+| `_refuse_trim_that_drops_another_line` raises on `other.intersects(trimmed)` without applying the redactor's 10% rule, so a sub-threshold sliver of a neighbouring line's box can raise although none of that line's characters would go. | **Ticketed** | CORE-004 (`#201`): use the neighbour's own glyph boxes and `_reaches_glyph` here too. Refuses where it could have converted — fail-safe direction, no reproduction. |
+| Target identification still takes the first span containing the centre. | **Already ticketed** | CORE-004 (`#201`); the reviewer could not weaponize it. |
+| `backend/uv.lock` still records `1.9.1` while `pyproject.toml` declares `1.9.2`; any `uv run` silently rewrites the tracked lock (it rewrote the reviewer's). | **Already ticketed** | CI-002 (`#191`) — the same defect, with the false-green mechanism: `uv run` repairs the lock before the version test reads it. Confirmed again here from the other side. |
+| `proposal.md`'s acceptance-criteria boxes are all unticked while `features.json` marks f1-f10 verified. | **Declined, with the reason stated** | Ticking them changes a contract file, and the archive gate's staleness check is name-based: the tick would stale the very review it records. The verified state is `features.json`, which is the machine-readable half; the reviewer declined the same edit for the same reason. |
+
+Two things this round confirmed from the other side, which is worth more than a restatement: the reviewer independently reproduced CI-002's lock repair, and independently measured the predicate rather than reading the table in this file.
+
 ## ADR-014 conditions
 
 | Condition | Evidence |
@@ -451,6 +465,7 @@ The dropped-lines defect is **not** one of #179's original five findings. It was
 ## Promotion candidates
 
 - [ ] Lesson for the repo's `docs/lessons/`? yes: docs/lessons/lesson-023-a-guard-that-returns-the-pre-fix-value-reinstates-the-defect.md
+- [ ] Lesson for the repo's `docs/lessons/`? yes: docs/lessons/lesson-027-a-refusal-is-not-harmless-when-the-refusal-is-the-protection.md — earned by the second signer's Major, which is a different lesson from lesson-023: one is a guard falling back to a bad value, the other is a guard refusing *the action that was itself the protection*, where the refusal hands the damage to what the guard was protecting
 - [ ] ADR-worthy decision for `docs/adr/`? no: ADR-014 already authorises this class of core change and its three conditions are unchanged
 - [ ] New pattern candidate for `00_meta/patterns/`? no: the geometry is repository-specific; the transferable half is the lesson above
 
