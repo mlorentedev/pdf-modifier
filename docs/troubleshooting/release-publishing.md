@@ -46,9 +46,15 @@ leaves the other silent until someone tries the second path:
    this, not a broken workflow.
 2. Compare the project name in `backend/pyproject.toml` against the pending publishers listed at
    PyPI → *Your projects* → *Publishing*.
-3. Check whether a repository rename happened since the last release (`git log --oneline --follow
-   .github/workflows/release.yml`, or the repo's own rename ADR). If it did, every trusted
-   publisher keyed by the old slug is now dead, including ones for other package names.
+3. Check whether a repository rename happened since the last release. There is no git-history
+   signal for it: a GitHub rename is not a commit, so `git log` cannot see one, and a workflow
+   edit that never happened is not evidence that nothing happened. Look where the rename is
+   recorded instead — the repository's own ADR (this repo: `docs/adr/adr-013-project-rename.md`),
+   a clone that predates it and was never re-pointed (`git remote -v`), or GitHub itself still
+   answering for the old name (`curl -sI https://github.com/<owner>/<old-name>` returns 301 to
+   the current one; verified for this repository's old slug).
+   If a rename did happen, every trusted publisher keyed by the old slug is now dead, including
+   ones for other package names.
 
 ### Solution
 
