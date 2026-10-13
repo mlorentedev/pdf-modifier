@@ -134,6 +134,11 @@ Added to the M1-M7 above, all measured on the code this revision ships. The tree
 - **`.gitignore` covered only the first signer's transcripts.** Added `specs/*/review-second-transcript.jsonl*`: the 2.5 MB hazard the comment above claims to remove applied to half the runs.
 - **The duplicate glyph key** is confirmed tracked in CORE-007 (`#209`), which carries the last-writer-wins question beside the band-vs-unavoidability one; this round measured kept-glyph drift as 0.0 across ~10k glyphs and found no rounding-boundary false refusal.
 
+## What the reviewed heads are, and what this revision adds to them
+
+Both signatures passed the same production code: the first at `65d2eef` (round 3), the second at `5e35997` (round 2). `git diff --stat 5e35997..HEAD -- backend/src frontend/src` is **empty** -- nothing in the shipped code has moved since either verdict -- and the contract set's content is unchanged, because `contract_digest.go` folds the two `features.json` fields this revision edits. What is added on top of those verdicts is the closure of the gaps they named: two test rows pinning the target exemption and the target lookup (M13 -> 2 red, M14 -> 3 red), and the recording of their findings above. The reviews were **not** re-run for that, deliberately and stated here rather than left for a reader to infer from the shas:
+a test-only addition that closes a gap the review itself asked to close does not change the behaviour the review judged, and re-running both signatures to re-read unchanged code would have delayed the archive by two review windows for no new information.
+
 ## Checkbox and evidence drift, and why it needed no re-review
 
 Both reviews found `proposal.md`'s acceptance-criteria boxes still `[ ]` while `tasks.md` and `features.json` said the work was done. It is drift, not missing work, and it is fixed here rather than left open: `contract_digest.go` normalises list-checkbox state before digesting -- *ticking `- [ ]` to `- [x]` is progress and a review whose own finding was "tick the boxes" does not invalidate itself* (`#998` part 2) -- so ticking them leaves both reviews fresh against the same contract content. The same normalisation covers `features.json`'s `state` and `evidence`, which are harness-written progress rather than contract. Nothing else in the contract set was edited: no criterion was reworded, no task added.
@@ -164,7 +169,7 @@ Not fixed here, deliberately: deciding unavoidability per glyph is a new predict
 
 ## Archive checklist
 
-- [ ] `proposal.md` frontmatter set to `status: archived`
-- [ ] Folder moved: `specs/CORE-006-verify-by-consequence/` -> `specs/archive/CORE-006-verify-by-consequence/`
+- [x] `proposal.md` frontmatter set to `status: archived`
+- [x] Folder moved: `specs/CORE-006-verify-by-consequence/` -> `specs/archive/CORE-006-verify-by-consequence/`
 - [ ] Bitácora board ticket for this spec moved to Done / closed with PR link (ADR-018)
-- [ ] Promotions above executed (if any)
+- [x] Promotions above executed (if any)

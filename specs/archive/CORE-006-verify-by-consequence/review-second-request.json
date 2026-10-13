@@ -1,8 +1,8 @@
 {
-  "reviewed_sha": "47a9ca0a1a30c83f9ee75fb6898906d9ad10a8b5",
-  "reviewer": "nan/mimo-v2.6-flash",
-  "requested_at": "2026-10-13T21:11:24Z",
-  "review_digest_before": "2ba25b81b11eddf4ef7bf688e67cd10d41ee6c2eb0edb8c525495f85c3b681ae",
+  "reviewed_sha": "5e3599762d19b81a6a73896e1bcf52aa5bbe6dd8",
+  "reviewer": "anthropic-review/claude-sonnet-5-5",
+  "requested_at": "2026-10-13T21:44:26Z",
+  "review_digest_before": "1ab9c7bd57c7c4a7a874164e3a214592e8fe6eaaf85e4fbe8a67a16129c0007c",
   "base_sha": "01624dee3bc417bd0688b183778781674b4c8a9f",
   "contract_digests": {
     "features.json": "5989e0057d2210665e976414fd9277458dcb88231f2b0b0b8fefdc10296c3de7",
