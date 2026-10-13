@@ -216,7 +216,7 @@ jobs:
           persist-credentials: false
 
       - name: Build the root Dockerfile
-        run: docker build --tag pdf-modifier-mcp:ci .
+        run: docker build --tag pdf-modifier:ci .
 
       - name: The image answers an MCP handshake with a clean stdout
-        run: scripts/check-mcp-image.sh pdf-modifier-mcp:ci
+        run: scripts/check-mcp-image.sh pdf-modifier:ci
