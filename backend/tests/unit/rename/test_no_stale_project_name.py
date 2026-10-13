@@ -36,6 +36,11 @@ EXCLUSIONS: dict[str, str] = {
     "docs/lessons/": "historical records: each says what was true when it was written",
     "docs/lessons.md": "the lessons pointer stub, part of that record",
     "docs/adr/adr-013-project-rename.md": "the decision record must name the from and the to",
+    # The rename CAUSED this failure, so the doc cannot explain it without the old
+    # name: Trusted Publishing is keyed by the project slug, and the retired slug is
+    # the reason the publish was rejected. Rewriting it would leave a troubleshooting
+    # note that no longer describes the problem it is filed under.
+    "docs/troubleshooting/release-publishing.md": "a failure the rename caused, so it names both",
     "specs/": "spec folders are audit artifacts, including the issue they trace to",
     "backend/specs/": "pre-move spec artifacts, archived the same way",
     "backend/CHANGELOG.md": "release-please owns it; it narrates the old name by definition",
