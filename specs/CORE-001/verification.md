@@ -508,6 +508,29 @@ Trimming *predicts* which rectangle is safe and has now failed four review round
 
 CORE-001 is **not archived**. One of the second signer's two Majors is closed with a regression row and a precise RED; the other is reproduced, honest in `features.json`, and ticketed. The archive gate needs a fresh review of both signatures anyway (§ "a review is not recyclable"), so nothing is gained by archiving ahead of that.
 
+## Round 6 (first signature, `nan/qwen3.8-flash` at `8b071e9`): FAIL on a claim, not on the code
+
+The reviewer could not break the code -- every row passes, and each of the three neutralisations it ran produced exactly the failure counts this spec records -- and failed the spec on one REAL Major in `proposal.md`: `review_round` asserted a round-6 PASS and a second-signature round-3 PASS that no artifact supports. Those rounds exist, but in **CORE-006's** spec folder (`specs/archive/CORE-006-verify-by-consequence/review-round-3.md`, `review-second-round-2.md`); this spec's committed verdicts stop at round 5 / second round 2, at shas that are not this head, and `tasks.md` in the same commit left round 6 open. **A completion claim about the review gate, made without the artifact the gate reads.** Corrected here: `review_round` names only the rounds with a committed verdict, and round 7 is owed after this fix rather than asserted.
+
+Its remaining findings are dispositioned rather than absorbed:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 2 | The probe counts recorded in `tasks.md`/`features.json` no longer reproduce: 125 fits / 15 refused trims recorded, **145 / 18** measured at this head. | **Applied.** The line below is the probe at the head being archived. The reviewer is right that the qualitative claim survives while the numbers moved: the `1 collapsed` and `1 unidentified` are the guard's own synthetic rows, and no real document appears in either. `features.json` f5/f8 are contract and keep their own wording; this is the record. |
+| 3 | `tasks.md` fix-round 5 claims `ruff format --check` passes for BOTH ruff versions; the venv's 0.15.5 wants to reformat `backend/tests/unit/harness/test_reviewer_pool_contract.py`, a file that predates this spec. | **Applied as a correction**: the claim holds for the files this spec touches (verified under both versions), not repo-wide, and the one file it does not hold for is CI-004 (`#203`) -- the version skew that ticket files, now reproduced from a third direction. `make check` runs neither formatter, which is why it is green. |
+| 4 | The trim loop mutates `trimmed` per neighbour, so with two asymmetric neighbours the verdict can depend on span order; no fixture has two neighbours. | **Ticketed**: CORE-009 (`#211`), with the order-symmetry row it needs. Loud-failing only -- CORE-006's check refuses rather than losing a line. |
+| 5 | Two predicates express "same line": `_same_line` (extent >= 0.9) and the centre-containment test in `_refuse_trim_that_drops_another_line`. | **Ticketed**: CORE-009 (`#211`), same ticket -- a hidden cross-file dependency written as two similar names. The outcome is pinned by the 0.45-1.30 em sweep, so it is not a live hole. |
+| 6 | `missing_untouched_lines` is membership-based, so a duplicate-line fixture would hide a dropped copy. | **Ticketed**: recorded in CORE-009 (`#211`) as surface-only; production is per-glyph, and no fixture has repeated lines. |
+| 7 | `f6`'s "the diff adds the one regression file" is true of this spec's commits and false of the range this review read (which carries `#197`'s rename-guard change and others). | **Applied**: the sentence is scoped to this spec's own commits in this file, which stays the record; `features.json` f6 keeps its wording because the contract set is closed under a passing verdict, and verification.md is where the scope is stated. |
+
+### The probe at this head
+
+```
+$ PYTHONPATH=scripts uv run pytest -q --no-cov -p probe_fitter_reachability
+429 passed, 19 skipped
+PROBE {'fits': 145, 'refused_trims': 18, 'unidentified': 1, 'collapsed': 1, 'identified_misses': 1}
+```
+
 ## ADR-014 conditions
 
 | Condition | Evidence |
