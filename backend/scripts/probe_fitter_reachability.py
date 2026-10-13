@@ -33,6 +33,10 @@ _STATS: dict[str, int] = {
 
 
 def _fit(page: Any, rect: Any, targets: Any = None, spans: Any = None) -> Any:
+    # "fits" counts every ATTEMPT, including the ones that end in a refusal and
+    # raise out of here: a fit was attempted. A refusal that RAISES is counted in
+    # `refused_trims` by `_refuse`, which increments before it delegates -- a review
+    # read this as an uncounted path, so the counters' units are stated here.
     _STATS["fits"] += 1
     try:
         return _ORIGINAL_FIT(page, rect, targets, spans)

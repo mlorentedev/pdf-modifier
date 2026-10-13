@@ -441,8 +441,14 @@ class PDFModifier:
         0.75 em), and the user had no way round it: replacing the fields one at a
         time is refused too, by design.
         """
+        # The caller reaches this guard only when the neighbour IS reached by the kept
+        # rectangle (`if other.contains(centre) or not other.intersects(trimmed):
+        # continue`), so asking whether it intersects again was dead code -- a review
+        # read it as a second protection that cannot fire, which is worse than not
+        # having one. Two exemptions remain: a neighbour that is itself being
+        # replaced, and one sharing the target's line.
         same_line = other.y0 <= centre.y <= other.y1
-        if id(span) in targets or same_line or not other.intersects(trimmed):
+        if id(span) in targets or same_line:
             return
         raise PDFModifierError(
             f"Cannot fit the redaction rectangle on page {page.number + 1}: covering "
@@ -460,17 +466,25 @@ class PDFModifier:
     def _refuse_unidentified_target(page: fitz.Page, rect: fitz.Rect) -> None:
         """Refuse a fit whose target object could not be identified.
 
-        `_glyph_boxes` returns nothing when no span holds the rect's centre, and the
-        coverage rule is vacuous over an empty list: every trim would be accepted,
-        including the ones rounds 1 and 2 were failed for. An empty glyph list is a
-        refusal, not a licence to trim -- the rule the guard already applies to an
-        empty rectangle.
+        Two ways to arrive here, since identification became a best-match: no span
+        overlaps the rectangle at all, or the best-matching span has no character
+        boxes. Either way `_glyph_boxes` returns nothing, and the coverage rule is
+        vacuous over an empty list: every trim would be accepted, including the ones
+        rounds 1 and 2 were failed for. An empty glyph list is a refusal, not a
+        licence to trim -- the rule the guard already applies to an empty rectangle.
+
+        The message therefore says what was searched for and not found. It used to
+        say that no object "holds the rectangle's centre", which is the rule this
+        file no longer applies and which is false for a span that overlaps the
+        rectangle and simply has no character boxes -- a maintainability review
+        caught the message still describing the removed rule, and CLI, MCP and API
+        callers read it directly.
         """
         raise PDFModifierError(
             f"Cannot fit the redaction rectangle to the replaced text object on "
-            f"page {page.number + 1}: no text object at "
-            f"{tuple(round(v, 3) for v in rect)} holds the rectangle's centre, so the "
-            f"characters being replaced cannot be identified.",
+            f"page {page.number + 1}: no text object with character boxes matches "
+            f"{tuple(round(v, 3) for v in rect)}, so the characters being replaced "
+            f"cannot be identified.",
             {
                 "page": page.number + 1,
                 "rect": [float(v) for v in rect],
