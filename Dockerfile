@@ -12,11 +12,14 @@
 # API behind nginx, with a health check on a port. This one serves one process
 # over stdin/stdout, which is what MCP's stdio transport is.
 #
-# Dependency resolution is unpinned (`pip install .` reads pyproject's ranges).
-# The mitigation is not a comment: `.github/workflows/docker-build.yml` builds
-# this image and runs the MCP handshake below on every pull request that touches
-# it, so a resolution that breaks the server fails here rather than in a third
-# party's builder.
+# Dependency resolution is unpinned (`pip install .` reads pyproject's ranges), so
+# a break can arrive with no commit of ours: PyMuPDF has already announced that
+# the `fitz` shim this package imports will be removed (CORE-002). CI mitigates
+# that only partly -- `.github/workflows/docker-build.yml` builds this image and
+# runs the MCP handshake on every change that touches it, which catches a break on
+# the next such PR, not one that lands between them, and Glama rebuilds an old
+# commit on its own schedule. The three ways to close it are a periodic rebuild
+# (CI-003), bounding the dependency, or pinning the resolve.
 # =============================================================================
 FROM python:3.12-slim-bookworm
 
