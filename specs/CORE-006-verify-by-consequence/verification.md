@@ -29,7 +29,7 @@ Each acceptance criterion from `proposal.md`, with the proof produced in this se
 - [x] **AC4 — the refusal names the page and the object, and writes nothing.** Same row: `details = {page, object, characters}`, and `not out.exists()`.
 - [x] **AC5 — ADR-014 conditions.** A failing test came first (below), no public contract is changed (`PDFModifierError` is reused, `ModificationResult.warnings` already existed), and the diff is the check and its rows — the trim heuristics are untouched.
 - [x] **AC6 — the extra cost measured.** 840 spans, 70 matches, best of 5 runs each: **2.95 s with the check against 2.87 s without, i.e. +0.08 s (+3 %)**, against CORE-005's measurement of the per-rectangle parse at 1.35 s for the same match count on a similar page. The check adds one page read per page and one glyph index comparison; it is small next to the parse CORE-005 tracks.
-- [x] **AC7 — CORE-001's `features.json` f9.** Still `pending` at this head on purpose: f9's claim spans a range this spec makes true, but f9 lives in CORE-001's contract and is ticked by CORE-001's own archive step (its `tasks.md` carries that task). Recorded here so the hand-off is not silent.
+- [x] **AC7 — CORE-001's `features.json` f9.** `f9` is `verified` with its range corrected to the leadings CORE-001 pinned (0.75/0.78 em, commit `29fe2f6`), so the condition AC7 names holds. What remains is its carve-out prose: it still describes the sub-0.72 em range as a **silent** loss that converts, which this check has since made a refusal. A second review found that at `47a9ca0`; it belongs to CORE-001's contract and is corrected in CORE-001's own archive step, **before** its reviews run, so the review reads the corrected text. Recorded here so the hand-off is not silent.
 - [x] **The accepted loss is reported, not silent** (`#199`'s decision): `test_the_accepted_co_located_loss_is_reported_as_a_warning` — the CORE-003 fixture converts, and `ModificationResult.warnings` names the object whose characters went with the redaction.
 
 ## Test status
@@ -61,7 +61,7 @@ Each row neutralises one thing and counts the tests that notice. Run by a first 
 
 | # | Mutation | Rows red | What it shows |
 |---|---|---|---|
-| M1 | `_check_no_other_object_lost_characters` -> immediate `return` | **6** | The consequence check is load-bearing: three sweep rows, the 0.60 em row, the planted-loss row and the warning row all go red. It is not decoration beside the fitter. |
+| M1 | `_check_no_other_object_lost_characters` -> immediate `return` | **7** | The consequence check is load-bearing: three sweep rows, the 0.60 em row, the planted-loss row, the warning row and the page-naming row all go red. It is not decoration beside the fitter. Six at `4b5d9b4`; a second review measured seven at `47a9ca0`, when the page-naming row existed, and re-running here confirms the larger count is the current one. |
 | M2 | `_refuse_trim_that_drops_another_line` -> no-op | **2** | CORE-001's refusal guard is pinned by both params of `test_a_tight_block_is_refused_rather_than_losing_the_line_below`. |
 | M3 | `_same_line` threshold 0.9 -> 0.5 | **4** | The 90 % band is pinned, including by the 0.60 em row. |
 | M4 | `_same_line` -> `False` (never accept) | **18** | The accept-list is what keeps documents converting: refusing every co-located loss fails 18 rows. This is the cost of getting the boundary wrong in the strict direction. |
@@ -80,6 +80,10 @@ This branch carries two specs. `git log 01624dee..HEAD -- backend/src/pdf_modifi
 ## The guard's visibility ends at glyphs
 
 `apply_redactions(images=PDF_REDACT_IMAGE_NONE)` keeps the default `graphics` behaviour, so a redaction can still cost **line art** (a rule, a border, a chart line) and this check cannot see it: it compares text, and text is what it promises. That is a declared limit, not an oversight -- `proposal.md` scopes to text objects -- but it belongs in writing rather than in the reader's inference. Filed with the other visibility questions in `#202`'s neighbourhood, not fixed here.
+
+## Checkbox and evidence drift, and why it needed no re-review
+
+Both reviews found `proposal.md`'s acceptance-criteria boxes still `[ ]` while `tasks.md` and `features.json` said the work was done. It is drift, not missing work, and it is fixed here rather than left open: `contract_digest.go` normalises list-checkbox state before digesting -- *ticking `- [ ]` to `- [x]` is progress and a review whose own finding was "tick the boxes" does not invalidate itself* (`#998` part 2) -- so ticking them leaves both reviews fresh against the same contract content. The same normalisation covers `features.json`'s `state` and `evidence`, which are harness-written progress rather than contract. Nothing else in the contract set was edited: no criterion was reworded, no task added.
 
 ## Open finding, tracked not absorbed
 

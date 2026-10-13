@@ -39,6 +39,6 @@
     "behavior": "The existing suite passes unchanged and the extra cost is measured and stated: one more page-text read per page with a replacement, against CORE-005's 1.35 s for 70 matches on an 840-span page.",
     "verification": "cd backend && uv run pytest -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 424 passed, 19 skipped, coverage 85.31 %. Cost: 2.95 s with the check against 2.87 s without on 840 spans / 70 matches, i.e. +0.08 s (+3 %), beside CORE-005's 1.35 s for the same match count; an independent review measured +0.7 % on its own page, the same order."
+    "evidence": "passed: 424 passed, 19 skipped, coverage 85.31 %. Cost: 2.95 s with the check against 2.87 s without on 840 spans / 70 matches, i.e. +0.08 s (+3 %), beside CORE-005's 1.35 s for the same match count; an independent review measured +0.7 % on its own page, the same order. A second review measured +2.0 % (900 spans, 75 matches) on its own page; three independent measurements (0.7 %, 2.0 %, 3 %) agree on the order."
   }
 ]
