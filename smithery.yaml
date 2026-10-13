@@ -7,4 +7,4 @@ startCommand:
     type: object
     properties: {}
   commandFunction: |-
-    (config) => ({ command: 'uvx', args: ['pdf-modifier-mcp'] })
+    (config) => ({ command: 'uvx', args: ['pdf-modifier'] })

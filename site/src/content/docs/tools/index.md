@@ -1,6 +1,6 @@
 ---
 title: MCP Tools Reference
-description: Detailed reference for all pdf-modifier-mcp MCP tools with parameters, examples, and error codes.
+description: Detailed reference for all pdf-modifier MCP tools with parameters, examples, and error codes.
 ---
 
 ## read_pdf_structure

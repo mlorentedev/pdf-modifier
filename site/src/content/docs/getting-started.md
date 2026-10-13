@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install pdf-modifier-mcp, use the CLI, and configure the MCP server for AI agents.
+description: Install pdf-modifier, use the CLI, and configure the MCP server for AI agents.
 ---
 
 ## Installation
@@ -8,13 +8,13 @@ description: Install pdf-modifier-mcp, use the CLI, and configure the MCP server
 Install from PyPI:
 
 ```bash
-pip install pdf-modifier-mcp
+pip install pdf-modifier
 ```
 
 Or run directly without installing (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-uvx pdf-modifier-mcp
+uvx pdf-modifier
 ```
 
 Requires **Python 3.12** or later.
@@ -22,8 +22,8 @@ Requires **Python 3.12** or later.
 To install from source:
 
 ```bash
-git clone https://github.com/mlorentedev/pdf-modifier-mcp.git
-cd pdf-modifier-mcp
+git clone https://github.com/mlorentedev/pdf-modifier.git
+cd pdf-modifier
 make setup
 ```
 
@@ -127,13 +127,13 @@ The MCP server exposes the same functionality over stdio for AI agent integratio
 ### Claude Code
 
 ```bash
-claude mcp add -s user pdf-modifier -- uvx --upgrade pdf-modifier-mcp
+claude mcp add -s user pdf-modifier -- uvx --upgrade pdf-modifier
 ```
 
 ### Gemini CLI
 
 ```bash
-gemini mcp add -s user pdf-modifier uvx -- --upgrade pdf-modifier-mcp
+gemini mcp add -s user pdf-modifier uvx -- --upgrade pdf-modifier
 ```
 
 ### OpenAI Codex CLI
@@ -143,7 +143,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.pdf-modifier]
 command = "uvx"
-args = ["--upgrade", "pdf-modifier-mcp"]
+args = ["--upgrade", "pdf-modifier"]
 ```
 
 ### GitHub Copilot (VS Code)
@@ -156,7 +156,7 @@ Add to `.vscode/mcp.json` or your User Settings:
     "servers": {
       "pdf-modifier": {
         "command": "uvx",
-        "args": ["--upgrade", "pdf-modifier-mcp"]
+        "args": ["--upgrade", "pdf-modifier"]
       }
     }
   }
@@ -165,7 +165,7 @@ Add to `.vscode/mcp.json` or your User Settings:
 
 ### Other Clients
 
-Any MCP-compatible client (like Cursor or Windsurf) that supports stdio transport will work. Point the client to `uvx --upgrade pdf-modifier-mcp`.
+Any MCP-compatible client (like Cursor or Windsurf) that supports stdio transport will work. Point the client to `uvx --upgrade pdf-modifier`.
 
 ### Available tools
 

@@ -15,7 +15,7 @@ Only the latest release receives security updates.
 
 Please report vulnerabilities through one of these channels:
 
-1. **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/mlorentedev/pdf-modifier-mcp/security/advisories/new)
+1. **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/mlorentedev/pdf-modifier/security/advisories/new)
 2. **Email**: mlorentedev@gmail.com
 
 ### Include in your report
@@ -34,7 +34,7 @@ Please report vulnerabilities through one of these channels:
 
 This policy covers:
 
-- `pdf-modifier-mcp` Python package
+- `pdf-modifier` Python package
 - MCP server and CLI interfaces
 
 Out of scope:
