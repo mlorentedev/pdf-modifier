@@ -47,6 +47,22 @@ created: "2026-10-12"
 - **`markers_measured` is a local addition to the attestation port**, not in the SSOT. Two review rounds found the same defect twice at two levels: CodeRabbit caught that provenance was checked per reviewer rather than per marker, and PR-Agent then caught that the per-marker fix still read *prose* — a note recording that a heading was observed **zero** times names the marker, so the marker could be declared on evidence saying nobody had ever seen it. The rule is now a recorded sighting list (`observed_in`), which an unobserved marker cannot produce. Proven against the real registry: declaring `## Incremental PR Reviewer Guide` there now fails the guard. Worth proposing upstream, since the SSOT states the rule only in prose.
 - **Two review rounds dispositioned on PR #175** (`coderabbitai`, then PR-Agent as `github-actions`), each recorded under `## Review triage` on the PR with the disposition, the evidence and what was declined.
 
+- **The tests run on `bats`, adopted from the SSOT rather than translated — PR2's blocker, resolved.**
+  The four scripts PR2 ports total ~950 lines of shell, and dotfiles verifies them with ~2,900 lines of
+  `bats`. Translation into `pytest` was rejected: the tests are the *specification* of those scripts in
+  the repository that owns them, so every later change there would be a re-translation, and the
+  assertions would live in two places drifting apart. Parity is CI-001's whole purpose, so the runner
+  comes with the tests. Mechanism copied from the SSOT rather than invented: install bats-core from the
+  pinned release tarball (dotfiles `versions.conf` pins `BATS_VERSION=1.13.0`; this repo names the same
+  version in the workflow's `env`) and run `bats tests/`. Not from a package manager -- an apt or npm
+  build drifts, and the whole point is that the same assertions pass in both repositories.
+  Cost, stated: a fourth runner in a repo whose gates are `pytest`, `vitest` and Playwright. Accepted
+  because these scripts guard CI itself, which is the one place where "it was tested" has to be
+  re-runnable by whoever changes the script.
+  Out of scope here, on purpose: dotfiles' `scripts/check-bats-names.sh` (a guard against silently
+  skipped `@test` names). Worth porting in PR2 if the suite is ported as-is; it is a second port, and
+  PR2's blocker was the runner, not the linters around it.
+
 ## Promotion candidates
 
 - [x] Lesson for the repo's `docs/lessons/`? yes: `docs/lessons/lesson-019-declaring-an-unobserved-review-marker-widens-the-gate.md`

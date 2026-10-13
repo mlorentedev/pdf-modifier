@@ -73,7 +73,7 @@ created: "2026-10-12"
 
 **Blocked on:** the `bats`-runner decision in `proposal.md`.
 
-- [ ] [AC4] Resolve the runner decision and record it in `verification.md` before writing any script.
+- [x] [AC4] Resolve the runner decision and record it in `verification.md` before writing any script — **bats-core, pinned, adopted from the SSOT** (2026-10-13, in `verification.md` under "Decisions made during implementation"). PR2 is unblocked.
 - [ ] [P] [AC4] Port `scripts/pr-agent-model-preflight.sh` (168 lines) and its test.
 - [ ] [P] [AC4] Port `scripts/pr-agent-route.sh` (341 lines) and its test, keeping the NaN/Anthropic draw and the `PR_AGENT_PROVIDER` override (`draw`/`nan`/`anthropic`/`nan-only`).
 - [ ] [P] [AC4] Port `scripts/pr-agent-publish-guard.sh` (233 lines) and `scripts/pr-agent-push-gate.sh` (211 lines) with their tests.
