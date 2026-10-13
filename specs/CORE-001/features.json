@@ -57,10 +57,10 @@
   },
   {
     "id": "CORE-001-f9",
-    "behavior": "A block whose leading is tighter than its glyph height is REFUSED rather than converted with a line lost. No rectangle both covers the target and spares the line below it, so the fit raises PDFModifierError naming the page, the target's rect and the neighbouring line -- instead of keeping the rectangle and quietly removing that line's characters, which is the defect this spec exists to close. Found by the second signer, not the first: at 12 pt on 9 pt leading the previous revision turned keepkeep4 into p4.",
+    "behavior": "A block whose leading is tight against its glyph height is REFUSED rather than converted with a line lost, over the range this spec tests: 12 pt on 9 pt (0.75 em) and 9 pt on 7 pt (0.78 em). Below about 0.72 em the fitter still misidentifies which object is being replaced and the loss is SILENT — reproduced by the second signer (two lines lose characters at 0.45-0.70 em, no error) and NOT fixed here, because the fix that closes it re-opens the large-object case below: one root cause, two shapes, and the identification change is what this revision carries. Filed as CORE-004 (#201), raised from THEORETICAL to REAL by that reproduction.",
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_tight_block_is_refused_rather_than_losing_the_line_below -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 2 passed (12pt-on9pt, 9pt-on7pt). RED with the refusal neutralised: 2 failed / 26 passed, and the silent output is ['keepkeep0','keepkeep1','keepkeep2','p4',...]."
+    "evidence": "passed: 2 passed (12pt-on9pt, 9pt-on7pt) — the tested range only. RED with the refusal neutralised: 2 failed / 26 passed, and the silent output is ['keepkeep0','keepkeep1','keepkeep2','p4',...]. The sub-0.72 em range is NOT pinned: it converts and loses lines, which is the open Major (#201)."
   },
   {
     "id": "CORE-001-f10",
@@ -68,5 +68,12 @@
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_slightly_tight_block_is_still_fitted_without_losing_anything -q --no-cov",
     "state": "verified",
     "evidence": "passed: 2 passed (10pt-on8pt, 12pt-on10pt). RED with the floor restored to 0.15: 1 failed (10pt-on8pt), which is the boundary pinned from above."
+  },
+  {
+    "id": "CORE-001-f11",
+    "behavior": "A large text object drawn under the text — a watermark, a stamp — does not change whether the page converts, whichever order it appears in. The object being replaced is the span whose bbox best matches the rect, not the first span whose bbox happens to contain the rect's centre: a 60 pt watermark satisfies the latter everywhere it crosses a line, became \"the object being replaced\", and made every trim impossible, so a page that had converted stopped converting. Span order decided the outcome, which is the second signer's first Major.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_large_object_behind_the_text_does_not_decide_whether_the_page_converts -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 4 passed (watermark drawn first and last x 14 pt and 13.2 pt leading). RED with the first-containing-span identification restored: exactly the 2 watermark-first rows fail, the watermark-last controls stay green."
   }
 ]

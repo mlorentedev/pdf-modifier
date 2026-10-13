@@ -469,6 +469,65 @@ def test_a_slightly_tight_block_is_still_fitted_without_losing_anything(
     assert TARGET not in lines, "the target survived"
 
 
+WATERMARK_LINES = 10
+WATERMARK_TARGET_LINE = 5
+WATERMARK_XY = (72.0, 140.0)
+WATERMARK_SIZE = 60.0
+
+
+def write_large_object_under_the_text(path: Path, *, leading: float, watermark_first: bool) -> None:
+    """A page-sized text object drawn under the lines, before or after them.
+
+    Its bbox covers the centre of every line it crosses, which is all the old
+    target test needed to mistake it for the object being replaced.
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    for second in [0, 1] if watermark_first else [1, 0]:
+        if second == 0:
+            page.insert_text(WATERMARK_XY, "DRAFT", fontname="helv", fontsize=WATERMARK_SIZE)
+        else:
+            for index in range(WATERMARK_LINES):
+                text = TARGET if index == WATERMARK_TARGET_LINE else f"ROW{index:02d}"
+                page.insert_text((72, 72 + index * leading), text, fontname="helv", fontsize=11)
+    doc.save(str(path))
+    doc.close()
+
+
+@pytest.mark.parametrize("leading", (14.0, 13.2), ids=["14pt-leading", "13.2pt-leading"])
+@pytest.mark.parametrize(
+    "watermark_first", (True, False), ids=["watermark-first", "watermark-last"]
+)
+def test_a_large_object_behind_the_text_does_not_decide_whether_the_page_converts(
+    tmp_path: Path, leading: float, watermark_first: bool
+) -> None:
+    """The second signer's first Major: a watermark drawn FIRST made a page fail.
+
+    The fitter used to take "the first span whose bbox contains the rect's centre".
+    A 60 pt watermark drawn before the lines satisfies that everywhere it crosses
+    them, so the watermark became the object being replaced: no trim reaches every
+    glyph of a page-sized object, every trim was refused, and a refusal that reaches
+    a neighbouring line raises. The same page with the watermark drawn LAST
+    converted, which made span order the thing deciding a document's fate. The
+    target is now the span whose bbox best matches the rect, so the object behind
+    the text is a neighbour, and a neighbour the loop skips is not trimmed against.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_large_object_under_the_text(src, leading=leading, watermark_first=watermark_first)
+
+    PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]}))
+
+    lines = read_lines(out)
+    dropped = [
+        f"ROW{index:02d}"
+        for index in range(WATERMARK_LINES)
+        if index != WATERMARK_TARGET_LINE and f"ROW{index:02d}" not in lines
+    ]
+    assert not dropped, f"a line beside the target was dropped: {dropped}"
+    assert REPLACEMENTS[0] in lines, "the target was not replaced"
+    assert TARGET not in lines, "the target survived"
+
+
 class _StubPage:
     """A page whose text objects sit exactly where a test needs them.
 

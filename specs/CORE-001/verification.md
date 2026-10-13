@@ -432,7 +432,7 @@ M6 is the answer to the second signer's sharpest methodological point -- "mutati
 |---|---|---|
 | The probe cannot see refused trims, so "a refusal costs nothing" was unmeasurable | **Applied** | `probe_fitter_reachability.py` counts them: 15 refused trims across the suite, of which the damaging one is gone. |
 | Re-parsing the page per rectangle: 70 matches on an 840-span page in 1.35 s against 0.10 s at the base, 840 matches in 18.8 s against 4.2 s | **Ticketed** | CORE-005 (`#202`): parse the page once per page rather than once per rectangle. Accepted here because the alternative is inferring the glyphs from bounding boxes, which is the defect. |
-| `ruff format --check` fails on the regression file | **Applied** | Real, and it exposed a skew rather than a formatting slip: the venv resolves ruff 0.15.5 while `.pre-commit-config.yaml` pins v0.8.6, and the two formatters disagree on those lines. The file now satisfies both, and the skew is filed as CI-004 (`#203`). `make check` does not run `ruff format`, which is why it was green despite this. |
+| `ruff format --check` fails on the regression file | **Applied, then applied again** | Real, and it exposed a skew rather than a formatting slip: the venv resolves ruff 0.15.5 while `.pre-commit-config.yaml` pins v0.8.6. The first fix satisfied both, and then further edits to the same file satisfied only the pinned one — round 5's second signer caught the regression of this very fix, which is why the claim is now checked with both tools after the last edit rather than once. The skew is filed as CI-004 (`#203`); `make check` runs neither formatter. |
 | The two-candidate span-order path, and rotated text | **Already ticketed** | CORE-004 (`#201`), filed from the first signature's same finding; the second signature adds "rotated text is untested rather than demonstrated". |
 | Is leading/font below 0.8 in scope? | **Answered: yes** | The proposal says "tight page" and the corpus is thermal-receipt data, where 12 pt on 9 pt leading is plausible. Declaring it out of scope would have turned a reproduced content loss into a documented limit, so the code was changed instead. |
 
@@ -450,13 +450,69 @@ The first signature after the fix (`nan/deepseek-v4-flash`, random draw from the
 
 Two things this round confirmed from the other side, which is worth more than a restatement: the reviewer independently reproduced CI-002's lock repair, and independently measured the predicate rather than reading the table in this file.
 
+## Round 8 — the second signature's two Majors: one closed, one open
+
+Round 7's first signature PASSed the refusal fix. The second signature — required because `proposal.md` declares `risk: high`, and a different vendor from the first — returned **FAIL** on the same revision, with two REAL Majors and one shared root cause: **the fitter identified the object being replaced as the first span whose bbox contains the rect's centre.**
+
+### Closed: a large object drawn under the text decided whether the page converted
+
+Reproduced here before anything changed. A 60 pt `DRAFT` drawn *before* ten lines makes a page fail; drawn *after* them, with the page identical otherwise, it converts:
+
+```
+leading=14.0 wm_y=140 wm_first=True:  RAISE
+leading=14.0 wm_y=140 wm_first=False: OK lost=[]
+leading=13.2 wm_y=140 wm_first=True:  RAISE
+leading=13.2 wm_y=140 wm_first=False: OK lost=[]
+```
+
+Span order decided a document's fate, and this revision is where it became fatal: the watermark's bbox contains the centre of every line it crosses, so *it* was "the object being replaced"; no trim reaches every glyph of a page-sized object, so every trim was refused; and a refused trim that reaches a neighbouring line now raises. A page that converted before the refusal existed stopped converting.
+
+The fix is the one the reviewer prescribed: `_target_span` takes the span whose bbox best matches the rect — an identical bbox first, which the analyzer's own rect makes nearly always available, then the largest overlap-over-union — and both are order-independent. All eight watermark variants now convert with every line kept:
+
+```
+$ uv run python /tmp/wm4.py
+leading=14.0 wm_y=140 wm_first=True:  OK lost=[]   (and 7 more, all OK)
+```
+
+Pinned by four rows (`test_a_large_object_behind_the_text_does_not_decide_whether_the_page_converts`), with the watermark-last variants as controls. RED, restoring the first-containing-span rule: exactly the two watermark-FIRST rows fail and the controls stay green — a mutation that pins the fix rather than the symptom.
+
+### Open: below about 0.72 em the same root cause still loses lines SILENTLY
+
+The same misidentification has a second shape, which this round did **not** fix. With the leading under about 0.72 em it is the *neighbour* whose box contains the centre, so the loop skips it as "the target", and the real target's neighbours are redacted with no error:
+
+```
+$ uv run python /tmp/sub07.py
+cobo 12/5.4 (0.45): converted lost=['ROW03', 'ROW05'] new=True
+cobo 12/6.6 (0.55): converted lost=['ROW03', 'ROW05'] new=True
+cobo 12/8.4 (0.70): converted lost=['ROW03']   new=True
+helv 11/4.95 (0.45): converted lost=['ROW03', 'ROW05'] new=True
+```
+
+**It is not a regression**: the base commit loses the same lines at the same leadings, and `f9` in `features.json` now says so instead of claiming the whole sub-glyph-height range is refused. It is a REAL Major against this spec's own acceptance criterion ("a replacement must not drop the lines that follow it"), it is reproduced above, and it is filed as CORE-004 (`#201`), raised from THEORETICAL to REAL by the reproduction.
+
+### What was tried, and why it was reverted
+
+Three attempts, all reverted, recorded so the next session does not repeat them:
+
+1. **Replacing the trim axis's centre test with the target's own box** ("disjoint on x ⇒ beside, disjoint on y ⇒ above/below, overlapping on both ⇒ nothing to separate"). Fails the ordinary case: consecutive line boxes in a normal block still overlap, so the rule answered "nothing to separate" and refused pages at *comfortable* leading.
+2. **Deriving the axis from which overlap dominates** (share of the line width ⇒ stacked, otherwise beside). Fails the co-located rows: a stamp nested inside the value shares most of the line width, so a same-line object was told to trim on y, and 19 existing rows went red.
+3. **Skipping the identified target instead of whatever holds the centre** (`span is target`), keeping the axis rule. Closes nothing and re-opens Major 1: the watermark then becomes a neighbour to trim against, and every watermark page refuses again.
+
+### The design this spec now argues for instead
+
+Trimming *predicts* which rectangle is safe and has now failed four review rounds in different geometry. The alternative is to check the consequence instead of predicting it: apply the redaction to the page, re-read the page's text, and refuse if any line that was not the target lost characters — the same shape as `#182`'s lesson that exit status is not evidence and the changed artifact is. It is finite, geometry-independent, and testable at every leading from 0.45 em to 1.27 em, which is exactly where the prediction keeps failing. It is **not** implemented here: it is a change to how the page is processed, not a repair of the defect this spec was opened for, and it needs its own ADR-014 justification and its own review. Recorded as the recommended option in CORE-004 (`#201`).
+
+### Verdict of this round
+
+CORE-001 is **not archived**. One of the second signer's two Majors is closed with a regression row and a precise RED; the other is reproduced, honest in `features.json`, and ticketed. The archive gate needs a fresh review of both signatures anyway (§ "a review is not recyclable"), so nothing is gained by archiving ahead of that.
+
 ## ADR-014 conditions
 
 | Condition | Evidence |
 |---|---|
 | Failing test first, synthetic fixture | `test_replacement_preserves_following_lines.py`, fixture generated inside the test. The round-1 RED commit (`1c0ae90`) is on `fix/CORE-001-reflow-drops-lines` and **not** in `master`'s history — `git merge-base --is-ancestor 1c0ae90 HEAD` exits **1**, because #186 was squash-merged and `ae28471` carries test and fix together. Round 2's RED is the neutralised-fitter run above |
 | No public contract change | `PDFModifier`'s functions, types and signatures unchanged; the fitter is private and grows two private helpers, and a fitting failure reuses `PDFModifierError` — **no new exception type**, so every layer that already catches it handles it without edits |
-| Scoped to the defect | The diff is the fitter's trim and its guard, plus the regression tests and this spec. Nothing else rides along |
+| Scoped to the defect | The fitter's trim and its guards, plus the regression tests, one probe script and this spec. The branch also carries what the release workflow and the defect stream left on it — the release bump (`.release-please-manifest.json`, `pyproject.toml`, `server.json`, `CHANGELOG.md`, from the release PR this branch was cut above) and lessons 021/022 — which round 5's second signer correctly called out against an earlier claim that nothing else rode along. Said plainly: the code change is scoped; the commit range is not only the code change |
 
 ## How this relates to #179
 

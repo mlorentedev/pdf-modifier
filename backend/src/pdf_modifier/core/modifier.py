@@ -207,6 +207,43 @@ class PDFModifier:
         return [fitz.Rect(char["bbox"]) for char in span.get("chars", [])]
 
     @staticmethod
+    def _target_span(rect: fitz.Rect, spans: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """The text object the rectangle was built from: the one that best MATCHES it.
+
+        Not "the first span whose bbox contains the rect's centre", which the second
+        signer reproduced: a watermark or stamp drawn under the text has a bbox that
+        covers the centre, so IT became "the object being replaced". No trim can
+        reach every glyph of a page-sized object, so every trim was refused, and
+        because a refused trim that reaches a neighbouring LINE now raises, a page
+        that had converted stopped converting -- and drawing the same watermark last
+        instead of first made it convert again, which is span order deciding a
+        document's fate.
+
+        The rect comes from the analyzer's own span, so an exact match is nearly
+        always available: identical bbox wins, then the largest overlap-over-union.
+        Both are order-independent, which is the point.
+        """
+        best: dict[str, Any] | None = None
+        best_score = 0.0
+        for span in spans:
+            other = fitz.Rect(span["bbox"])
+            if other == rect:
+                return span
+            score = PDFModifier._overlap_ratio(rect, other)
+            if score > best_score:
+                best, best_score = span, score
+        return best
+
+    @staticmethod
+    def _overlap_ratio(rect: fitz.Rect, other: fitz.Rect) -> float:
+        """Intersection over union: how nearly two boxes are the same box."""
+        overlap = fitz.Rect(rect & other)
+        union = rect.get_area() + other.get_area() - overlap.get_area()
+        if union <= 0:
+            return 0.0
+        return float(overlap.get_area() / union)
+
+    @staticmethod
     def _trim_away_from(trimmed: fitz.Rect, other: fitz.Rect, centre: fitz.Point) -> fitz.Rect:
         """What ONE neighbour asks of the rect: the edge facing it, moved past it.
 
@@ -297,7 +334,7 @@ class PDFModifier:
         """
         centre = fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
         spans = PDFModifier._text_spans(page)
-        target = next((span for span in spans if fitz.Rect(span["bbox"]).contains(centre)), None)
+        target = PDFModifier._target_span(rect, spans)
         glyphs = PDFModifier._glyph_boxes(target)
         if not glyphs:
             # No glyph boxes means no coverage rule, and `all()` over an empty list
