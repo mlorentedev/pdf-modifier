@@ -25,6 +25,26 @@ logger = setup_logging(__name__)
 
 DEFAULT_MAX_FILE_SIZE_BYTES: int = 100 * 1024 * 1024  # 100 MB
 
+# How much of a character's box a redaction rectangle must reach before
+# `apply_redactions` removes it. Measured by bisecting the transition at 6, 9, 12,
+# 18 and 24 pt, on BOTH axes: the character goes at 10.0% of its **width** and
+# 10.0% of its **height**, at every size, so the rule is a fraction of the box
+# rather than a fixed distance, and one constant covers both axes. `intersects`
+# is therefore NOT the redactor's predicate -- a rectangle reaching a glyph by a
+# 7% sliver passes `intersects` and the glyph survives, which is round 3's Finding
+# 1 (one character of the replaced value left under its replacement). 15% was the
+# first value here and the second signer was right that it is over-strict: every
+# percentage point above the measured transition is a trim refused for no reason.
+# 12% is the measured transition plus a margin, deliberately small.
+#
+# A refused trim is NOT free, which the first version of this comment claimed: the
+# trim is what keeps the rectangle off the neighbouring lines, so refusing one
+# leaves the rectangle where it was and the neighbour is redacted instead. That is
+# the defect this file exists to fix, so a refusal that would cost a neighbour its
+# characters on ANOTHER LINE now raises -- see
+# `_refuse_trim_that_drops_another_line`.
+GLYPH_COVERAGE_FLOOR: float = 0.12
+
 
 class PDFModifier:
     """
@@ -166,39 +186,268 @@ class PDFModifier:
             self._doc = None
 
     @staticmethod
+    def _text_spans(page: fitz.Page) -> list[dict[str, Any]]:
+        """Every text span on the page, with its per-character boxes.
+
+        `rawdict` rather than `dict`: the character boxes are what make "does this
+        trim still reach the target's glyphs?" a question about the document
+        instead of a guess made from two bounding boxes. Two rounds of review
+        were needed to learn that the guess is not good enough (see the fitter).
+        """
+        blocks = page.get_text("rawdict")["blocks"]
+        return [
+            span for block in blocks for line in block.get("lines", []) for span in line["spans"]
+        ]
+
+    @staticmethod
+    def _glyph_boxes(span: dict[str, Any] | None) -> list[fitz.Rect]:
+        """The box of every character in one span, or nothing when there is no span."""
+        if span is None:
+            return []
+        return [fitz.Rect(char["bbox"]) for char in span.get("chars", [])]
+
+    @staticmethod
+    def _target_span(rect: fitz.Rect, spans: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """The text object the rectangle was built from: the one that best MATCHES it.
+
+        Not "the first span whose bbox contains the rect's centre", which the second
+        signer reproduced: a watermark or stamp drawn under the text has a bbox that
+        covers the centre, so IT became "the object being replaced". No trim can
+        reach every glyph of a page-sized object, so every trim was refused, and
+        because a refused trim that reaches a neighbouring LINE now raises, a page
+        that had converted stopped converting -- and drawing the same watermark last
+        instead of first made it convert again, which is span order deciding a
+        document's fate.
+
+        The rect comes from the analyzer's own span, so an exact match is nearly
+        always available: identical bbox wins, then the largest overlap-over-union.
+        Both are order-independent, which is the point.
+        """
+        best: dict[str, Any] | None = None
+        best_score = 0.0
+        for span in spans:
+            other = fitz.Rect(span["bbox"])
+            if other == rect:
+                return span
+            score = PDFModifier._overlap_ratio(rect, other)
+            if score > best_score:
+                best, best_score = span, score
+        return best
+
+    @staticmethod
+    def _overlap_ratio(rect: fitz.Rect, other: fitz.Rect) -> float:
+        """Intersection over union: how nearly two boxes are the same box."""
+        overlap = fitz.Rect(rect & other)
+        union = rect.get_area() + other.get_area() - overlap.get_area()
+        if union <= 0:
+            return 0.0
+        return float(overlap.get_area() / union)
+
+    @staticmethod
+    def _trim_away_from(trimmed: fitz.Rect, other: fitz.Rect, centre: fitz.Point) -> fitz.Rect:
+        """What ONE neighbour asks of the rect: the edge facing it, moved past it.
+
+        A neighbour sharing the rect's vertical band is BESIDE the target, so only
+        x separates them; one in another band is above or below, so only y does.
+        Trimming the wrong axis collapses the rect onto itself -- the first fix
+        round trimmed y unconditionally, a same-line neighbour dragged `y1` onto
+        the target's own `y0`, and the guard handed the raw rect back.
+        """
+        candidate = fitz.Rect(trimmed)
+        if other.y0 <= centre.y <= other.y1:
+            if other.x1 <= centre.x:
+                candidate.x0 = max(candidate.x0, other.x1 + 0.01)
+            else:
+                candidate.x1 = min(candidate.x1, other.x0 - 0.01)
+        elif other.y1 <= centre.y:
+            candidate.y0 = max(candidate.y0, other.y1 + 0.01)
+        else:
+            candidate.y1 = min(candidate.y1, other.y0 - 0.01)
+        return candidate
+
+    @staticmethod
+    def _is_safe_trim(candidate: fitz.Rect, glyphs: list[fitz.Rect]) -> bool:
+        """Whether one candidate trim may replace the rect being fitted.
+
+        Two questions, and they answer differently. An EMPTY candidate is a fitting
+        FAILURE: it is kept so the guard at the end of the fit reports it, instead
+        of this loop swallowing it and handing back a rect that no longer avoids
+        the neighbours. A candidate that would leave a character of the object
+        behind is REFUSED: `apply_redactions` removes a character only if the rect
+        reaches it by `GLYPH_COVERAGE_FLOOR` of its box, so a candidate that merely
+        intersects a glyph leaves part of the replaced text on the page under its
+        replacement -- round 2's Major through the refused-trim path, and round 3's
+        through the trim path, one character long. Such a neighbour is not one to
+        trim against: it shares the target's ink, so the rect has to cover both.
+        """
+        if candidate.get_area() <= 0:
+            return True
+        return all(PDFModifier._reaches_glyph(candidate, glyph) for glyph in glyphs)
+
+    @staticmethod
+    def _reaches_glyph(rect: fitz.Rect, glyph: fitz.Rect) -> bool:
+        """Whether `apply_redactions` would remove this glyph, by the measured rule."""
+        overlap = fitz.Rect(rect & glyph)
+        enough_width = overlap.width >= glyph.width * GLYPH_COVERAGE_FLOOR
+        enough_height = overlap.height >= glyph.height * GLYPH_COVERAGE_FLOOR
+        return bool(enough_width and enough_height)
+
+    @staticmethod
     def _fit_redaction_to_its_own_text_object(page: fitz.Page, rect: fitz.Rect) -> fitz.Rect:
         """Shrink a redaction rect so it cannot reach the neighbouring text objects.
 
-        `apply_redactions` removes every text object that INTERSECTS the rect, not
-        only the glyphs inside it. Consecutive line boxes in a tight block overlap:
+        `apply_redactions` removes every glyph that INTERSECTS the rect, not only
+        the glyphs inside it. Consecutive line boxes in a tight block overlap:
         11 pt of leading against 12.6 pt of line height leaves 1.6 pt of overlap, so
-        a rect fitted to the target's own box also intersects the lines above and
+        a rect fitted to the target's own box also reaches the lines above and
         below and takes them with it. Only the replacement is re-inserted, so they
         are lost silently -- a receipt in `#179` lost `ARC` and `CVM` this way.
 
         The object being replaced is the one that CONTAINS the rect's centre; a
-        neighbour can only overlap its edge. Trimming the rect away from the
-        neighbours leaves the target fully removed (its object still intersects)
-        while sparing the rest, which a re-insertion could not do for a
-        subset-embedded font whose glyphs may not be re-encodable.
+        neighbour can only overlap its edge. Two invariants make a trim safe, and
+        each one is a review finding this helper shipped without:
+
+        * **The axis follows the neighbour** -- x when it is beside the target,
+          y when it is above or below. Round 1 trimmed y unconditionally, so a
+          same-line neighbour collapsed the rect and the guard returned the raw
+          one.
+        * **The trim may not lose a glyph of the target** -- the candidate is
+          kept only if it still reaches every character of the object being
+          replaced. Round 2's neighbour *overlapped* the target's glyph run; the
+          x-trim then cut inside it, the first characters of the replaced value
+          survived underneath the replacement, and nothing failed.
+
+        A neighbour that fails the second invariant is not a neighbour to trim
+        against: it shares the target's own ink, so the rect has to cover both and
+        the untrimmed rectangle is kept.
+
+        * **A refusal may not drop another LINE** -- the second signer's finding,
+          and the reason the sentence above is not the end of the story. Refusing
+          a trim is only harmless when the rectangle it keeps is harmless. With
+          leading tighter than the glyph height (a 12 pt font at 9 pt leading),
+          every single trim is accepted and the rectangle is left thin; a later
+          one is refused because it would leave the target under the floor, and
+          the neighbour it was trimming against -- a different line -- is then
+          redacted and never re-inserted. Measured: `keepkeep4` became `p4`.
+          There is no rect that both covers the target and spares that line, so
+          the fit refuses instead of choosing which line to lose.
         """
-        trimmed = fitz.Rect(rect)
         centre = fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
-        for block in page.get_text("dict")["blocks"]:
-            for line in block.get("lines", []):
-                for span in line["spans"]:
-                    other = fitz.Rect(span["bbox"])
-                    if other.contains(centre) or not other.intersects(trimmed):
-                        continue
-                    if other.y1 <= centre.y:
-                        trimmed.y0 = max(trimmed.y0, other.y1 + 0.01)
-                    else:
-                        trimmed.y1 = min(trimmed.y1, other.y0 - 0.01)
-        # Never hand an empty rect to the redactor: it would remove nothing and
-        # leave the original text in place under the replacement.
+        spans = PDFModifier._text_spans(page)
+        target = PDFModifier._target_span(rect, spans)
+        glyphs = PDFModifier._glyph_boxes(target)
+        if not glyphs:
+            # No glyph boxes means no coverage rule, and `all()` over an empty list
+            # is True: every trim would be "safe" and rounds 1-2's misclassification
+            # would return silently. The same rule as the empty rect below -- refuse
+            # rather than proceed unguarded (round-3 Finding 4).
+            PDFModifier._refuse_unidentified_target(page, rect)
+
+        trimmed = fitz.Rect(rect)
+        for span in spans:
+            other = fitz.Rect(span["bbox"])
+            if other.contains(centre) or not other.intersects(trimmed):
+                continue
+            candidate = PDFModifier._trim_away_from(trimmed, other, centre)
+            if PDFModifier._is_safe_trim(candidate, glyphs):
+                trimmed = candidate
+            else:
+                PDFModifier._refuse_trim_that_drops_another_line(page, rect, other, trimmed, centre)
+
         if trimmed.get_area() <= 0:
-            return fitz.Rect(rect)
+            PDFModifier._refuse_collapsed_fit(page, rect, trimmed)
         return trimmed
+
+    @staticmethod
+    def _refuse_trim_that_drops_another_line(
+        page: fitz.Page,
+        rect: fitz.Rect,
+        other: fitz.Rect,
+        trimmed: fitz.Rect,
+        centre: fitz.Point,
+    ) -> None:
+        """Refuse a fit whose only options are losing the target or losing a line.
+
+        A trim is refused when it would leave a glyph of the object being replaced
+        under the floor -- correct in itself. What makes it a failure is what the
+        refusal leaves behind: `trimmed`, which still reaches `other`. If `other` is
+        on another line, its characters are redacted, never re-inserted, and the
+        page says nothing -- the defect this whole file is about.
+
+        Only a DIFFERENT line raises. A neighbour sharing the target's band is the
+        co-located case (a label drawn under a value, an overprint): its ink is in
+        the same place, so a redaction reaching one reaches the other and there is
+        no rect to prefer. That case stays accepted and pinned (CORE-003, `#199`).
+        """
+        # The caller reaches this guard only when the neighbour IS reached by the kept
+        # rectangle (`if other.contains(centre) or not other.intersects(trimmed):
+        # continue`), so asking whether it intersects again was dead code -- a review
+        # read it as a second protection that cannot fire, which is worse than not
+        # having one. `same_line` is the live exemption here.
+        same_line = other.y0 <= centre.y <= other.y1
+        if same_line:
+            return
+        raise PDFModifierError(
+            f"Cannot fit the redaction rectangle on page {page.number + 1}: covering "
+            f"{tuple(round(v, 3) for v in rect)} needs the rectangle to reach the "
+            f"neighbouring line at {tuple(round(v, 3) for v in other)}, whose "
+            f"characters would be removed and not re-inserted.",
+            {
+                "page": page.number + 1,
+                "rect": [float(v) for v in rect],
+                "neighbour": [float(v) for v in other],
+            },
+        )
+
+    @staticmethod
+    def _refuse_unidentified_target(page: fitz.Page, rect: fitz.Rect) -> None:
+        """Refuse a fit whose target object could not be identified.
+
+        Two ways to arrive here, since identification became a best-match: no span
+        overlaps the rectangle at all, or the best-matching span has no character
+        boxes. Either way `_glyph_boxes` returns nothing, and the coverage rule is
+        vacuous over an empty list: every trim would be accepted, including the ones
+        rounds 1 and 2 were failed for. An empty glyph list is a refusal, not a
+        licence to trim -- the rule the guard already applies to an empty rectangle.
+
+        The message therefore says what was searched for and not found. It used to
+        say that no object "holds the rectangle's centre", which is the rule this
+        file no longer applies and which is false for a span that overlaps the
+        rectangle and simply has no character boxes -- a maintainability review
+        caught the message still describing the removed rule, and CLI, MCP and API
+        callers read it directly.
+        """
+        raise PDFModifierError(
+            f"Cannot fit the redaction rectangle to the replaced text object on "
+            f"page {page.number + 1}: no text object with character boxes matches "
+            f"{tuple(round(v, 3) for v in rect)}, so the characters being replaced "
+            f"cannot be identified.",
+            {
+                "page": page.number + 1,
+                "rect": [float(v) for v in rect],
+            },
+        )
+
+    @staticmethod
+    def _refuse_collapsed_fit(page: fitz.Page, rect: fitz.Rect, trimmed: fitz.Rect) -> None:
+        """Refuse a fit whose rect has no area, naming the page and both rectangles.
+
+        A collapsed rect is a fitting FAILURE, not a small rect: measured, a 0.02 pt
+        rect removes no glyph at all, so passing one to the redactor would leave the
+        original text under the replacement; passing the RAW rect re-imports the
+        content loss. Neither is acceptable in silence, and this is where the fit
+        says so instead of returning something unusable.
+        """
+        raise PDFModifierError(
+            f"Cannot fit the redaction rectangle to the replaced text object on "
+            f"page {page.number + 1}: {tuple(round(v, 3) for v in rect)} collapsed to "
+            f"{tuple(round(v, 3) for v in trimmed)} while avoiding its neighbours.",
+            {
+                "page": page.number + 1,
+                "rect": [float(v) for v in rect],
+                "trimmed": [float(v) for v in trimmed],
+            },
+        )
 
     def _apply_replacements_to_page(
         self,

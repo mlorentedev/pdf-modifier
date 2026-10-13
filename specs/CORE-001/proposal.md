@@ -1,3 +1,16 @@
+---
+id: "CORE-001"
+type: spec
+status: verifying # draft | implementing | verifying | archived
+created: "2026-10-13"
+issue: "mlorentedev/pdf-modifier#179"   # repo#NNN — GitHub issue / Project item that tracks this spec
+risk: high   # the change lands inside core/modifier.py, which every other component trusts; the round-1 review's Blocker is why the declaration is machine-readable, not prose
+review: required
+review_round: 4   # rounds 1-3 (nan/mimo-v2.6-flash, then nan/deepseek-v4-flash x2) returned FAIL; a review is not recyclable, so each round is relaunched against the frozen head
+tags: [spec, proposal]
+template_version: "1.0"
+---
+
 # CORE-001 — A replacement must not drop the lines that follow it
 
 **Traces to:** #179 · **ADR:** `docs/adr/adr-014-core-defect-exception.md`
