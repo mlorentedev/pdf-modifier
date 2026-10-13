@@ -1041,3 +1041,88 @@ def test_a_partially_replaced_neighbour_span_keeps_its_prefix(tmp_path: Path) ->
     assert text.count("PREFIX") == 2, f"a prefix was dropped: {text!r}"
     assert "FORWARD" not in text and "BACKWARD" not in text, f"a value survived: {text!r}"
     assert text.count("NEWVALUE") == 2, f"a value was not replaced: {text!r}"
+
+
+# Leadings where the fitter is provably safe: nothing is lost and the conversion
+# must happen (the sweep in `verification.md` records the same three).
+SAFE_LEADINGS = ((12.0, 10.0), (12.0, 12.0), (9.0, 11.7))
+
+
+def test_the_safe_leadings_still_convert(tmp_path: Path) -> None:
+    """The other half of the refuse-or-preserve contract.
+
+    Every ailing-range row RETURNS when the conversion refuses, which is what the
+    contract allows and what a wrong prediction is supposed to cost. A regression
+    that refused the WHOLE range would therefore pass every one of them and stop
+    converting documents without failing anything -- a suite cannot notice that about
+    itself, and a PR reviewer reading the rows did. These leadings are the ones the
+    fitter is safe at, and each has to produce a file.
+    """
+    for font, leading in SAFE_LEADINGS:
+        src = tmp_path / f"in-{leading}.pdf"
+        out = tmp_path / f"out-{leading}.pdf"
+        write_tight_leading_block(src, font=font, leading=leading)
+
+        result = PDFModifier(str(src), str(out)).process(
+            ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+        )
+
+        assert result.success, f"a safe leading ({leading / font:.2f} em) failed to convert"
+        assert out.exists(), f"a safe leading ({leading / font:.2f} em) wrote no file"
+        assert TARGET not in read_lines(out), "the target must be replaced, not preserved"
+
+
+def test_the_target_is_chosen_by_overlap_not_by_being_the_first_to_intersect() -> None:
+    """The IoU branch of `_target_span`, which every other row bypasses.
+
+    Every fixture in this file builds a rectangle equal to a span's bbox, so the
+    "identical bbox wins" early return always fires and the scoring branch never
+    runs. The production path for replacing a word INSIDE a line has a rectangle
+    smaller than its span, and that is where a wrong tie-break reintroduces the
+    span-order defect: with the score replaced by "first intersecting span wins",
+    a page-sized object drawn before the real span is chosen instead, and the whole
+    suite still passes.
+    """
+    watermark = (0.0, 0.0, 600.0, 700.0)
+    real = (100.0, 100.0, 110.0, 112.0)
+    spans = PDFModifier._text_spans(cast("fitz.Page", _StubPage([watermark, real])))
+    sub_rect = fitz.Rect(100.0, 100.0, 105.0, 112.0)
+
+    chosen = PDFModifier._target_span(sub_rect, spans)
+
+    assert chosen is spans[1], "the object the rectangle belongs to must win on overlap"
+
+
+def test_a_loss_only_partly_explained_by_a_co_located_rectangle_is_refused() -> None:
+    """`all`, not `any`, decides which vanished characters are excused.
+
+    A loss is accepted only when EVERY vanished character was removed by a rectangle
+    whose target shares the lost object's line; accepting the object because some of
+    its characters were co-located "would readmit the defect through the middle of
+    the span", as `_dispose_of_lost_characters` says. Mutating that `all` to `any`
+    left every row green, so the invariant is pinned here, where it is decided.
+    """
+    shared = [(72.0, 72.0, 78.0, 82.0), (78.0, 72.0, 84.0, 82.0), (84.0, 72.0, 90.0, 82.0)]
+    span = {
+        "bbox": (72.0, 72.0, 90.0, 82.0),
+        "chars": [
+            {"c": "a", "bbox": shared[0]},
+            {"c": "b", "bbox": shared[1]},
+            {"c": "c", "bbox": shared[2]},
+        ],
+    }
+    co_located_target = {"bbox": (72.0, 72.0, 84.0, 82.0)}
+    other_line_target = {"bbox": (84.0, 92.0, 90.0, 102.0)}
+    redactions = [
+        (fitz.Rect(72.0, 72.0, 80.0, 82.0), co_located_target),
+        (fitz.Rect(84.0, 72.0, 90.0, 82.0), other_line_target),
+    ]
+    lost = [("a", 72.0, 72.0), ("b", 78.0, 72.0), ("c", 84.0, 72.0)]
+    modifier = PDFModifier.__new__(PDFModifier)
+
+    with pytest.raises(PDFModifierError) as raised:
+        modifier._dispose_of_lost_characters(
+            cast("fitz.Page", _StubPage([(0.0, 0.0, 1.0, 1.0)])), span, redactions, lost
+        )
+
+    assert "another text object" in str(raised.value)

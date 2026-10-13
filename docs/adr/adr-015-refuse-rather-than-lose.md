@@ -38,6 +38,15 @@ The rectangle-fitting heuristic stays, demoted: it is now an *optimisation that 
 **Two limits of this check, stated rather than implied:**
 
 - **"Co-located" is a proxy for "unavoidable".** It is decided by a shared vertical band (>= 90 % of the shorter box), not by asking, per lost glyph, whether some rectangle could have covered the target and missed it. So a same-line neighbour whose characters a rectangle *could* have spared is warned where it should be refused. The loss is still reported, which is the promise above; tightening the classification is a new prediction about geometry and is tracked as CORE-007 (`#209`) rather than absorbed here.
+- **The same-line test is a CLIFF, and the boundary flips on it.** Co-location is decided by a shared
+  vertical extent of >= 90 % of the shorter box, and a review reproduced both sides of it within the same
+  page shape: a watermark crossing the replaced line at one vertical offset converts and warns, at another
+  is refused, because the overlap fell just under the threshold. Both outcomes follow this ADR's policy --
+  the refused page is one whose base version dropped the watermark's glyphs -- but the caller has no way to
+  choose the loss over the refusal, and the refusal's message ("no fitted rectangle spares it") is not true
+  of an object whose ink merely sits behind the line. Giving a refusal an explicit way past it is CORE-011
+  (`#213`): a product decision with interfaces, a default and a batch-mode answer, deliberately not made
+  inside a correctness fix.
 - **The guard sees text, not graphics.** The comparison is glyph by glyph, so a redaction that costs line art (a rule, a border, a chart line) is invisible to it -- `apply_redactions` keeps the default `graphics` behaviour. The component promises not to drop *text* objects, and this is where that promise ends.
 
 ## Alternatives rejected

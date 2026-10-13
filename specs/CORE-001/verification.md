@@ -585,6 +585,42 @@ PROBE {'fits': 152, 'refused_trims': 21, 'unidentified': 1, 'collapsed': 1, 'ide
 
 The two counts that are not `fits` are still the guard's own synthetic rows -- the unreachable-collapse stub and the unidentifiable stub -- so the climb from 125 to 152 fits reflects the rows this change added, not a corpus that became harder to convert.
 
+## Second signature round 4 (`anthropic-review/claude-sonnet-5-5` at `e2071e4`): PASS WITH GAPS
+
+The reviewer could not break the fix under rotation (receipt fixture at 0/90/180/270 degrees), rotated text (11/13/16 pt leading), or about 1100 fuzzed pages: no silent neighbour loss, and every refusal it inspected had a base-version loss behind it. 124 refusals, all at <= 0.7 em, all pages the base dropped lines on; nothing refused at 0.8 em or above. Its findings, dispositioned:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | **Major, THEORETICAL**: the IoU branch of `_target_span` is pinned by nothing -- every fixture builds a rect equal to a span's bbox, so the identical-bbox early return always fires. Replacing the score with "first intersecting span wins" left the suite green. | **Applied**: `test_the_target_is_chosen_by_overlap_not_by_being_the_first_to_intersect`, with a page-sized span drawn before the real one. Mutating the score to `1.0 if rect.intersects(other) else 0.0` (M18) fails exactly that row. |
+| 2 | **Major, THEORETICAL**: `all(...)` in `_dispose_of_lost_characters` is pinned by nothing; mutating it to `any(...)` left 52 tests green, although the docstring is explicit that accepting an object because *some* of its characters were co-located would readmit the defect through the middle of the span. | **Applied**: `test_a_loss_only_partly_explained_by_a_co_located_rectangle_is_refused`, which hands the decision three lost glyphs, two explained by a co-located rectangle and one by a rectangle on another line. M19 (`all` -> `any`) fails exactly that row. |
+| 3 | **Minor, REAL**: the 90 % same-line test is a cliff -- a page whose watermark overlap falls just under it is refused where the base converted lossily, the outcome flips on the threshold, there is no user override, and the message says "no fitted rectangle spares it" about an object whose ink is merely behind the line. | **Applied as a record + tracked**: the cliff is now stated in ADR-015 as the accepted boundary rather than left to the code, and the user-visible escape hatch is CORE-011 (`#213`) -- refusing to make a product decision inside a fix. Mutating `shorter * 0.9` to `0.99` survives (the cliff is real), to `0.3` fails 6 rows. |
+| 4 | **Minor, REAL**: the fit is ~7x the base on a dense page (60 replacements over 840 spans: 0.67 s against 0.09 s). | **Already ticketed**: CORE-005 (`#202`), which carries this measurement beside the two others. |
+| 5 | **Minor, REAL**: `modifier.py` grows 674 -> 1181 lines inside a class already over the repo's 250-line threshold, and the new helper cluster could live in a sibling core module. | **Applied as ticket**: CORE-011 (`#213`) covers both the size/refactor question and the refusal escape hatch, which is the same "the class and its policy are one thing" observation. `ruff check --select C901` at 10 passes, so no function is over the complexity limit. |
+| 6 | **Minor, REAL**: stale counts and ticks in the contract set (f6's "431 passed", "no pre-existing test modified", unticked acceptance boxes, the unticked round-6 task). | **Applied here**: `verification.md` carries the ledger, the probe and the current counts; the contract files stay closed under this verdict, which is what the reviewer asked. |
+| 7 | **Question**: the reviewed range includes already-merged master work (`Dockerfile`, `release.yml`, `#187`-`#207`). | **Confirmed**: a base-resolution artefact of the stacked branch, not claimed scope. The PR bodies list the union per commit, and `git log 01624dee..HEAD` attributes each. |
+
+### Review rounds, second signature
+
+| Round | Reviewer | Head | Verdict |
+|---|---|---|---|
+| 1 | `anthropic-review/claude-sonnet-5-5` | `a479628` | FAIL -- tight leading |
+| 2 | `anthropic-review/claude-sonnet-5-5` | `bae62bd` | FAIL -- watermark order, sub-0.72 em |
+| 3 | `anthropic-review/claude-sonnet-5-5` | `a1b4ae8` | FAIL -- the target exemption |
+| 4 | `anthropic-review/claude-sonnet-5-5` | `e2071e4` | PASS WITH GAPS (this round) |
+
+## PR review triage (the `## Review triage` comments on #190 and #208)
+
+Both open PRs were reviewed by bots and triaged; the dispositions are posted on the PRs and summarised here because two of them produced rows in this spec's file:
+
+| Source | Finding | Disposition |
+|---|---|---|
+| CodeRabbit, #190 | `_refuse_unidentified_target`'s message still described the removed centre-containment rule, which is false for a span that overlaps and has no character boxes. | **Applied** on the base branch (`4f1bd34`), keeping the "cannot be identified" substring the test and the probe match on. |
+| PR-Agent, #190 | `not other.intersects(trimmed)` in the refusal guard is dead code -- the caller reaches it only when the neighbour IS reached. | **Applied** (`4f1bd34`): removed, with the two live exemptions named. |
+| PR-Agent, #190 | The probe counts a raising refusal in `fits` and in no other bucket. | **Declined**: `_refuse` increments `refused_trims` before delegating and is registered in `_PATCHERS`, so the path is counted; `fits` counts attempts by design. The probe now states the units, which was the misreading behind the finding. |
+| PR-Agent, #208 | The ailing-range rows return early on refusal, so a regression refusing the whole range would pass every one of them. | **Applied**: `test_the_safe_leadings_still_convert`. Verified by making every fit refuse, which fails the new row 3 times and the ailing rows 0 times -- the vacuity was real, not theoretical. |
+| PR-Agent, #208 | The exemptions are span-level while a replacement can target a substring. | **Ticket**: CORE-010 (`#212`), with four recorded attempts (including this spec's own 0.58/0.67/0.75 em tight-leading one) and the recommended per-glyph fix. |
+| CodeRabbit, #208 | -- | **No review ran**: auto-reviews are disabled for non-default base branches, so #208 is unreviewed by CodeRabbit and PR-Agent is its only reviewer. Disclosed rather than left implicit. |
+
 ## ADR-014 conditions
 
 | Condition | Evidence |
