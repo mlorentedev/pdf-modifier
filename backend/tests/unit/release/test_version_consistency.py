@@ -43,10 +43,16 @@ def declared_versions() -> dict[str, str]:
     """Every place a release version is declared, resolved rather than grepped."""
     pyproject = tomllib.loads((BACKEND / "pyproject.toml").read_text())
     server = json.loads((BACKEND / "server.json").read_text())
+    lock = tomllib.loads((BACKEND / "uv.lock").read_text())
+    # A lockfile also records the version of the editable project. It was the
+    # fourth place this version is declared and the one nobody looked at, which
+    # is the whole reason this test compares locations to each other.
+    locked = {p["name"]: p["version"] for p in lock["package"]}
     return {
         "pyproject.toml [project].version": pyproject["project"]["version"],
         "server.json $.version": server["version"],
         "server.json $.packages[0].version": server["packages"][0]["version"],
+        "uv.lock package pdf-modifier": locked["pdf-modifier"],
     }
 
 
@@ -61,4 +67,5 @@ def test_the_version_locations_themselves_do_not_drift() -> None:
         "pyproject.toml [project].version",
         "server.json $.version",
         "server.json $.packages[0].version",
+        "uv.lock package pdf-modifier",
     }
