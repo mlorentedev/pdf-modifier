@@ -38,16 +38,20 @@ created: "2026-10-12"
 
 - [ ] [AC5] Rename `$VAULT_PATH/10_projects/pdf-modifier-mcp/` to `pdf-modifier/`, together with the `memory/` symlink in this repo, because `dotf mem thread --project <repo>` resolves the project directory **by repo name**: rename the repo without this and every future session's handoff lookup misses its own memory. `docs/runbooks/new-machine-setup.md` names the vault path and must follow. Do this **in the same window as the repo rename**, not before (the vault is the memory sink and must not point at a name that does not exist yet) and not after (the lookup breaks in the gap).
 
-## Cross-repo: the credential consumers (own PR in `dotfiles`)
+## Cross-repo: `dotfiles` carries three registries, not one (own PR there)
 
-- [ ] [AC5] In `dotfiles`, replace every `ci:mlorentedev/pdf-modifier-mcp` consumer id with `ci:mlorentedev/pdf-modifier` in `secrets/registry.yaml` (`NAN_API_KEY` today, and `PR_AGENT_ANTHROPIC_API_KEY` if CI-001 PR2 has landed). External worktree, per Standing Order #9.
+- [ ] [AC5] `secrets/registry.yaml`: the `ci:mlorentedev/pdf-modifier-mcp` consumer id appears on **two** secrets — `BITACORA_PAT` (line 73) and `NAN_API_KEY` (line 165), plus `PR_AGENT_ANTHROPIC_API_KEY` if CI-001 PR2 has landed. All move to `ci:mlorentedev/pdf-modifier`.
+- [ ] [AC5] `forge/branch-protection.json`: the repo is a **key** in `repos`, holding the required status checks (`test (3.12)`, `test (3.13)`). Rename the repo without moving this key and the forge registry stops managing protection for the repo that now exists, while still naming one that does not.
+- [ ] [AC5] Four places launch the tool by **package name**, not by repo: `mcp-servers.json` (`uvx pdf-modifier-mcp`), `ai/copilot/mcp-config.json`, `ai/opencode/opencode.jsonc`, and `cli/internal/claude/mcp_test.go` (the fixtures for the first three). These follow the distribution, not the repo slug.
+- [ ] [AC5] **Not changed**: `docs/lessons/*`, `specs/archive/*` and the comments in `scripts/bitacora-rollout.sh` name the repo as it was; they are records, and rewriting them would falsify them. Same rule as in-repo.
 - [ ] [AC5] After that merges: `dotf secrets sync ci --repo mlorentedev/pdf-modifier`. Report by **exit status**; never print the value.
+- [ ] [AC5] **The exposure is the sync path, not the credential already in place.** A repository's Actions secrets travel with it through a rename, so CI is not left credential-less by renaming first — what breaks is `dotf secrets sync ci`, which selects a consumer **by slug** and would match nothing until the registry moves. That matters on a rotation or on delivering a new secret, not on an ordinary run, and `pr-agent.yml`'s credential step fails loudly with the sync remedy rather than degrading.
 
 ## The rename is an owner action, and it is last
 
 - [ ] [AC5] **Only after the code is on `master` and the consumers are updated**: `gh repo rename pdf-modifier --repo mlorentedev/pdf-modifier-mcp`, then update the local remote (`git remote set-url origin`).
 - [ ] [AC1] Verify the redirect and the new surfaces: the old URL redirects, the Pages URL resolves at the new slug, and a fresh `git clone` of the new URL works. Record all three.
-- [ ] [AC7] Deprecation for the old distribution name — per the Risk 3 decision: publish a final `pdf-modifier-mcp` shim release depending on `pdf-modifier`, or document the break in the README.
+- [ ] [AC7] Deprecation for the old distribution name — per the Risk 3 decision: publish a final `pdf-modifier-mcp` shim release depending on `pdf-modifier`, or document the break in the README. **The reason is the notice, not a break**: `pip install pdf-modifier-mcp` keeps resolving to 1.6.0, and without a new release the old project page can never mention the rename. Measured 2026-10-12: ~1,206 downloads a week on the old name.
 
 ## Verification window — before archive
 
