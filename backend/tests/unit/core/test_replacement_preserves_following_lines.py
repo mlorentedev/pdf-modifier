@@ -971,3 +971,73 @@ def test_removal_needs_the_rectangle_to_reach_the_glyph_on_both_axes() -> None:
 
     assert not PDFModifier._removes_glyph(full_width_sliver_of_height, glyph)
     assert PDFModifier._removes_glyph(tall_enough, glyph)
+
+
+def test_the_target_exemption_needs_targets_and_spans_from_one_parse(tmp_path: Path) -> None:
+    """The identity pairing, which nothing asserted, in both directions.
+
+    `targets` is keyed by `id(span)` and both parameters are independently optional,
+    so a caller that passes a target set built from one parse while `spans` defaults
+    to its own switches the exemption off silently. The direction is the safe one --
+    the guard refuses again, as it did before the exemption existed, and no content is
+    lost -- but "silently off" and "loudly off" are different bugs and only this row
+    tells them apart. The geometry is the tight block whose fields are all replaced:
+    with one parse it converts (the row above), with two it refuses.
+    """
+    src = tmp_path / "in.pdf"
+    write_a_tight_block_whose_fields_are_all_replaced(src)
+    document = fitz.open(str(src))
+    page = document[0]
+    middle = fitz.Rect(
+        next(
+            span["bbox"]
+            for span in PDFModifier._text_spans(page)
+            if "".join(char["c"] for char in span["chars"]) == "FIELD1"
+        )
+    )
+
+    with pytest.raises(PDFModifierError) as raised:
+        PDFModifier._fit_redaction_to_its_own_text_object(
+            page, middle, {id(span) for span in PDFModifier._text_spans(page)}, spans=None
+        )
+
+    message = str(raised.value)
+    assert "neighbouring line" in message, f"the guard must refuse here: {message}"
+
+    spans = PDFModifier._text_spans(page)
+    fitted = PDFModifier._fit_redaction_to_its_own_text_object(
+        page, middle, {id(span) for span in spans}, spans
+    )
+
+    document.close()
+    assert fitted is not None, "one parse must exempt the neighbouring field"
+
+
+def test_a_partially_replaced_neighbour_span_keeps_its_prefix(tmp_path: Path) -> None:
+    """A replacement can target a SUBSTRING of a span, and the prefix must survive.
+
+    The exemptions are span-level (the neighbour in the trim guard, the lost span in
+    the consequence check) while a match can be part of a span, so characters of a
+    partially replaced neighbour that some other rectangle reached could be redacted,
+    exempted by identity and never re-inserted. The reviewing round could not
+    construct that in three attempts; this row pins the direction rather than leaving
+    the gap to inference.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 72), "PREFIXFORWARD", fontname="cobo", fontsize=12)
+    page.insert_text((72, 81), "PREFIXBACKWARD", fontname="cobo", fontsize=12)
+    doc.save(str(src))
+    doc.close()
+
+    PDFModifier(str(src), str(out)).process(
+        ReplacementSpec(replacements={"FORWARD": "NEWVALUE", "BACKWARD": "NEWVALUE"})
+    )
+
+    document = fitz.open(str(out))
+    text = document[0].get_text()
+    document.close()
+    assert text.count("PREFIX") == 2, f"a prefix was dropped: {text!r}"
+    assert "FORWARD" not in text and "BACKWARD" not in text, f"a value survived: {text!r}"
+    assert text.count("NEWVALUE") == 2, f"a value was not replaced: {text!r}"

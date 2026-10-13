@@ -546,6 +546,45 @@ Its remaining findings, dispositioned:
 | 4 | `features.json` f3/f6 evidence had drifted (28/409 recorded; 50/431 at this head), and `verification.md`'s round numbering is inconsistent with `proposal.md` and `tasks.md` (two different "Round 6"s). | **Applied**: both counts re-measured in the entries above. The numbering is historical -- this file records rounds as they happened, `tasks.md` renumbers them per fix round -- and is called out here rather than silently reconciled. |
 | 5 | The reviewed range carries content from other specs (the release workflow, Dockerfile, `.gitignore`, the Dependabot check, Glama, the rename-guard exclusion, and CORE-006 itself). | **Recorded**: already disclosed above and in `features.json` f6's scope, which this file scopes to the spec's own commits. The reviewer did not escalate it. |
 
+## Round 8 (first signature, `nan/deepseek-v4-flash` at `7ad75cf`): PASS WITH GAPS
+
+The round that reviewed the exemption fix could not break it: it tried the partial-span hypothesis (the most promising silent-loss path against an identity-keyed exemption), the three constructions stayed clean, and M15 turned exactly the new row red. Its findings are bookkeeping and two test gaps, dispositioned here because all three of the files it names (`proposal.md`, `tasks.md`, `features.json`) are contract and a passing verdict closes them:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | `features.json` f5/f8 still record "125 fits" / "1 unidentified in 121 fits"; the probe at this head reports **152 fits / 21 refused trims**. | **Applied here**: the line below is the probe at the head being archived. The probe is the measurement and `features.json` is contract, so this file carries it, exactly as the reviewer asked. |
+| 2 | `tasks.md` has no entry for `7ad75cf` (the second signature's Major, its exemption fix and its two new rows), its round-6 box is still open, and `proposal.md`'s `review_round: 6` understates the verdicts that exist (round 7 PASS at `a1b4ae8` by `nan/glm5.3-flash`). | **Applied here as the ledger** -- see "Review rounds, as they happened" below. The contract files stay untouched under this verdict, which is what the reviewer recommended. |
+| 3 | The exemption is keyed on `id(span)` while `targets` and `spans` are independently optional, so a caller that mixes two parses switches it off silently -- fail-loud, since the guard then refuses as it did before the fix, but nothing asserted the pairing. | **Applied**: `test_the_target_exemption_needs_targets_and_spans_from_one_parse`, which drives the real tight-block geometry both ways (two parses -> refusal, one parse -> exempt). M15 is now 2 red. |
+| 4 | The exemption is at SPAN granularity while a replacement can target a substring, so characters of a partially replaced neighbour reached by another rectangle could be exempted by identity and never re-inserted. Not reproducible in three attempts. | **Applied**: `test_a_partially_replaced_neighbour_span_keeps_its_prefix` pins the direction (a `PREFIX`+value line with only the value replaced keeps both prefixes and both replacements), rather than leaving the gap to inference. |
+
+### Review rounds, as they happened
+
+`tasks.md` numbers rounds per fix round and this file numbers them per review run; `proposal.md` counts only verdicts with a committed artifact. The ledger, all at branch heads of this change:
+
+| Round | Reviewer | Head | Verdict |
+|---|---|---|---|
+| 1 | `nan/mimo-v2.6-flash` | `f1dd8ea` | FAIL -- one REAL Blocker |
+| 2 | `nan/deepseek-v4-flash` | `a7ef1a2` | FAIL -- one REAL Major |
+| 3 | `nan/deepseek-v4-flash` | `d748a43` | FAIL -- two REAL Majors |
+| 4 | `nan/glm5.3-flash` | `a479628` | PASS |
+| 5 | `nan/deepseek-v4-flash` | `f7b1324` | PASS |
+| 6 | `nan/qwen3.8-flash` | `8b071e9` | FAIL -- a REAL Major in `proposal.md`: rounds that belong to CORE-006 claimed here |
+| 7 | `nan/glm5.3-flash` | `a1b4ae8` | PASS |
+| 8 | `nan/deepseek-v4-flash` | `7ad75cf` | PASS WITH GAPS (this round) |
+| second 1 | `anthropic-review/claude-sonnet-5-5` | `a479628` | FAIL -- tight leading |
+| second 2 | `anthropic-review/claude-sonnet-5-5` | `bae62bd` | FAIL -- watermark order, sub-0.72 em |
+| second 3 | `anthropic-review/claude-sonnet-5-5` | `a1b4ae8` | FAIL -- the exemption fixed above |
+
+### The probe at this head
+
+```
+$ PYTHONPATH=scripts uv run pytest -q --no-cov -p probe_fitter_reachability
+433 passed, 19 skipped
+PROBE {'fits': 152, 'refused_trims': 21, 'unidentified': 1, 'collapsed': 1, 'identified_misses': 1}
+```
+
+The two counts that are not `fits` are still the guard's own synthetic rows -- the unreachable-collapse stub and the unidentifiable stub -- so the climb from 125 to 152 fits reflects the rows this change added, not a corpus that became harder to convert.
+
 ## ADR-014 conditions
 
 | Condition | Evidence |

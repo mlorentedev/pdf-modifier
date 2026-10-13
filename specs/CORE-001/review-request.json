@@ -1,8 +1,8 @@
 {
-  "reviewed_sha": "a1b4ae8fda07acb04799697c4fb1c4663cabdb4d",
-  "reviewer": "nan/glm5.3-flash",
-  "requested_at": "2026-10-13T22:06:40Z",
-  "review_digest_before": "6c20e397e1f95c3fe6cbd3fa338b799a78858f6718d84b1a426ecbaaa4129cce",
+  "reviewed_sha": "7ad75cfb34a1036ad05fee52d5125374655be05b",
+  "reviewer": "nan/deepseek-v4-flash",
+  "requested_at": "2026-10-13T22:26:14Z",
+  "review_digest_before": "b92fb3c6189574039921120ab6902bc4f0c08a0702fa64c3adc0c1d9513e6f31",
   "base_sha": "53a697441c2e7f5236ff0ec0d481808d89c62d7a",
   "contract_digests": {
     "features.json": "23deebc973435e5af31ef4a81d833b18eb5b3e38929e20e7428cd8cb5088d347",
