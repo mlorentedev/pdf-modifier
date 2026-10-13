@@ -36,7 +36,8 @@
 
 - [x] Independent adversarial review, round 1 (`dotf spec review CORE-001`) — **FAIL**: one REAL Blocker (above) plus two minor findings. The archive gate refused, correctly.
 - [x] Independent adversarial review, round 2 (`nan/deepseek-v4-flash`) — **FAIL**: one REAL Major (round 3 below), three minors. Round 1's Blocker was confirmed genuinely closed, by independent reproduction of four shapes the spec never tested.
-- [ ] Independent adversarial review, round 3 — **fresh**, because a review is not recyclable and the branch moved after each one
+- [ ] Independent adversarial review, round 3 (`nan/deepseek-v4-flash`) — **FAIL**: two REAL Majors, three minors. Both Majors were real and were reproduced here before anything changed (below). Round 1's Blocker and round 2's Major were confirmed genuinely closed.
+- [ ] Independent adversarial review, round 4 — **fresh**, because a review is not recyclable and the branch moved after every one
 - [ ] Archive to `specs/archive/CORE-001/`
 
 ## Fix round 2 — the review's Major finding (round 2: **FAIL**)
@@ -48,3 +49,14 @@
 - [x] **Finding 3** dispositioned, not waived: the fail-loud guard is accepted (fail the document rather than corrupt it), measured as unreachable in 68 real fits, and checked to surface in CLI, MCP, API and batch. **Finding 4** applied: the "old value gone" claim is scoped to the shapes measured.
 - [x] Re-measure the cost of `rawdict`: 40 replacements in 0.137 s against round 1's 0.134 s with `dict`.
 - [x] `make check` **400 passed**, coverage **84.63%**; `ruff` and `mypy --strict` clean.
+
+## Fix round 3 — the review's two Major findings (review round 3: **FAIL**)
+
+- [x] Reproduce both Majors before touching anything. **Finding 1**: `_is_safe_trim` accepted a candidate on `intersects`, but `apply_redactions` removes a character only from a measured share of its box — a label whose box crosses the value's first glyph by 0.4 pt left `6` on the page under its replacement. **Finding 2**: a neighbour whose ink lies inside the rectangle was redacted and never re-inserted, silently (`ACCOUNT: ` → `AC`).
+- [x] Replace the guessed predicate with the measured one: bisect the redactor's transition at 6, 9, 12, 18 and 24 pt → **10.0% of the character's width at every size**, so the rule is a fraction of the box and `GLYPH_COVERAGE_FLOOR = 0.15` sits above it. A stricter-than-the-redactor check costs a refused trim; a laxer one costs content, silently.
+- [x] Make the shared-ink loss a stated policy rather than a silent one: it is accepted (no geometry separates two objects drawn in the same place; the alternatives are refusing the whole document or re-inserting through a subset font), pinned by a named row that fails if the loss grows, and the capability is filed as CORE-003 — not added here, per ADR-014 condition 3.
+- [x] **Finding 3** applied: `surviving_fragments(window=2)` cannot see one character, so `surviving_value_spans` reads the output's own text objects and every row asserts both. **Finding 4** applied: an unidentified target is refused, not trimmed unguarded (`all()` over an empty list is `True`). **Finding 5** answered with citations — `cli.py` (5 sites), `mcp.py:37`, `routes/pdf.py:105,166`, `batch_process`, and `TestMCPErrorHandling` — instead of the unverified claim round 3 flagged.
+- [x] RED, three mutations, each precise: coverage floor → `intersects` = **3 failed / 21 passed**, exactly the three new rows, with `['6'] survived`; refusal neutralised = **4 failed**; whole fitter neutralised = **21 failed / 3 passed** (the single-object control).
+- [x] Make the refusal's cost a measurement instead of an assertion: `backend/scripts/probe_fitter_reachability.py` counts **121 fits, 1 collapse, 1 unidentified target over the whole suite — both from the guard's own stub pages, none from a real document**.
+- [x] All eight `features.json` verification commands are run here and exit 0 with a plain whitespace split (no shell quoting required), because a verification command that cannot run is not one.
+- [x] `make check` **405 passed**, coverage **84.70%**; `ruff` and `mypy --strict` clean; fitter functions at CC 8/5/4/4/3/3/2, nesting ≤ 2.

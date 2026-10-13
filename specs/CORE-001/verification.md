@@ -257,7 +257,7 @@ Found 17 errors.        <- the rule is running; at 10 nothing is over
 
 ### Finding 3 (fail-loud guard) — accepted, disclosed, and checked in the layers
 
-A collapsed fit raises `PDFModifierError`, which `process` re-raises: one unfit rect fails the whole conversion rather than producing a partly-corrupt file. **This is the intended behaviour and it is accepted, not waived** (lesson-023: a guard must never fall back to the value from before the fix). It is bounded by measurement rather than by hope: the collapse branch was reached **0 times in 68 fits** across the suite before it was made loud, and the only synthetic case that reaches it is the guard's own test.
+A collapsed fit raises `PDFModifierError`, which `process` re-raises: one unfit rect fails the whole conversion rather than producing a partly-corrupt file. **This is the intended behaviour and it is accepted, not waived** (lesson-023: a guard must never fall back to the value from before the fix). It is bounded by measurement rather than by hope: instrumenting the fitter across the whole suite — `backend/scripts/probe_fitter_reachability.py`, which prints the count on exit — gives **121 fits, 1 collapse and 1 unidentified target, both of them from the guard's own stub-page rows and none from a real document**. (Round 3 measured 0 collapses in 68 fits, on a smaller suite.) The only fit that reaches the collapse branch is the test that exists to reach it.
 
 Surfaced to the user, not swallowed: `interfaces/cli.py`, `interfaces/mcp.py` and `web/routes/pdf.py` all catch `PDFModifierError` and report it (the API as a 400 with the message), and `batch_process` records it per file so one unfit document does not stop a batch. The failure needs no new exception type, which is why the layers needed no edit.
 
@@ -269,12 +269,98 @@ Surfaced to the user, not swallowed: `interfaces/cli.py`, `interfaces/mcp.py` an
 
 The first version of the residue assertion reported the fix as broken: `3C` occurs in both the old value and `9F3C1D7A4E620B85`, so a window shared with the replacement reads as residue. The subtraction of the replacement's own windows is that fix, and it is why the check is described here rather than just trusted.
 
+## Round 4 — round 3's two Majors, one measured rule, and a policy stated
+
+Round 3 (`nan/deepseek-v4-flash`) also returned **FAIL**, with two REAL Majors and three minors. Both Majors were reproduced here before anything changed, and both came from one mistake: the safety check was asking a question the redactor does not answer.
+
+### The redactor's predicate, measured
+
+`_is_safe_trim` accepted a candidate whenever it **intersected** a glyph. `apply_redactions` does not work that way. Bisecting the transition at five font sizes shows it removes a character once the rectangle covers **10.0% of the character's width**, at every size — a fraction of the box, not a distance:
+
+```
+  fontsize=6.0   char width=  3.60  removal threshold=0.360 pt  (10.0% of the char width)
+  fontsize=9.0   char width=  5.40  removal threshold=0.540 pt  (10.0% of the char width)
+  fontsize=12.0  char width=  7.20  removal threshold=0.720 pt  (10.0% of the char width)
+  fontsize=18.0  char width= 10.80  removal threshold=1.080 pt  (10.0% of the char width)
+  fontsize=24.0  char width= 14.40  removal threshold=1.440 pt  (10.0% of the char width)
+```
+
+So a rectangle reaching a glyph by a 7% sliver passed the check and the glyph stayed on the page. `GLYPH_COVERAGE_FLOOR = 0.15` is the rule now, above the measured 10% and above that sliver: a check stricter than the redactor costs a refused trim, and a refused trim only leaves the rectangle where it was.
+
+### Major A: one character of the replaced value survived (Finding 1)
+
+The reviewer's fixture, rebuilt here: a label whose **box** crosses the value's first glyph by 0.4 pt — `ACCOUNT: ` ends in a space, so its box runs 5.4 pt past its ink:
+
+```
+  'ACCOUNT: '            (72.0, 73.9, 120.6, 86.5)
+  '68D489883C5B7A25'     (115.6, 73.9, 202.0, 86.5)
+```
+
+`intersects` accepted a trim to x=120.61; the glyph box is (115.6 .. 121.0), and 0.39 pt of overlap is not enough for the redactor, so `6` stayed, drawn at the same origin as its replacement. With the floor the trim is refused, the rectangle keeps x0=115.6, and the value goes whole:
+
+```
+$ uv run python /tmp/sliver_check.py
+spans after: ['ARC: 00', 'ACCOUNT:', 'CVM: 5E0000', '9F3C1D7A4E620B85']
+```
+
+### Major B: the shared-ink policy, stated and pinned (Finding 2)
+
+When a neighbour's **ink** lies inside the fitted rectangle — not a sliver, but characters drawn in the same place — the coverage rule refuses the trim, the raw rectangle is kept, and the neighbour's characters inside it are redacted and never re-inserted:
+
+```
+before: 'ACCOUNT: '  +  the value drawn at x=84
+after : 'AC'                                    <- 'COUNT:' was inside the target's rectangle
+```
+
+**Accepted, and no longer silent.** There is no geometry that separates two objects drawn in the same place: a redaction that reaches one reaches the other. The alternatives were refusing the whole document — worse for a receipt that is otherwise fine — or re-inserting the neighbour's characters, a capability this repair does not add (ADR-014 condition 3, and a re-insertion through a subset-embedded font is the trap `#179` lost a day to). A named row pins the exact shape of the loss — the label survives as a truncated prefix of itself, with nothing added or reordered — so it cannot grow unnoticed, and the capability is filed as CORE-003.
+
+### Minor A: the residue assertion could not see one character (Finding 3)
+
+`surviving_fragments(window=2)` is blind to a one-character residue by construction, which is exactly what Major A left behind. `surviving_value_spans` reads the output's own text objects instead — after a redaction rewrites what is left of the object, a single survivor is its own object — and every row asserts it now.
+
+### Minor B: an unidentified object was a licence to trim (Finding 4)
+
+`_glyph_boxes(None)` is `[]` and `all()` over an empty list is `True`, so a target that could not be identified made every trim "safe" and rounds 1-2's misclassification would have returned silently. It is a refusal now, with its own stub-page row, on the same principle as the empty rectangle. Reachability, from `backend/scripts/probe_fitter_reachability.py`: **121 fits in the suite, 1 with an unidentified target, and it is this row's own stub page** — no real document reaches the branch.
+
+### Minor C: the layer-surfacing claim, cited (Finding 5)
+
+Round 3 marked "checked to surface in CLI/MCP/API/batch" as unverified, correctly. It is a citation now rather than a claim: `interfaces/cli.py` (five catch sites), `interfaces/mcp.py:37`, `web/routes/pdf.py:105,166` and `batch_process` each catch `PDFModifierError`, and `tests/unit/interfaces/test_mcp.py::TestMCPErrorHandling` exercises the MCP path. The document-level failure stays accepted for the collapse guard.
+
+### RED, with the measured floor neutralised
+
+```
+$ uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov
+3 failed, 21 passed
+E  AssertionError: the value is still on the page in pieces after a 0.4 pt overlap:
+   ['6'] survived, because the trim was accepted on `intersects` rather than on the
+   share of the glyph the redactor actually needs
+```
+
+Exactly the three sliver rows fail; nothing else moves. Neutralising the **refusal** adds its own row (4 failed), and neutralising the **whole fitter** gives **21 failed / 3 passed** — the 3 being the single-object control.
+
+### GREEN
+
+```
+$ uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov
+24 passed
+
+$ uv run pytest tests/unit/core -q --no-cov
+201 passed, 11 skipped
+
+$ make check
+405 passed, 19 skipped, coverage 84.70%   ruff clean, mypy --strict clean
+```
+
+### Performance, including what round 3 measured
+
+`_text_spans` parses the page once per rectangle, so a page with N replacements does N parses. Round 3 measured 60 replacements on a dense page in **0.279 s**; this session measured 40 on a lighter page in **0.137 s**. Same order, and now recorded: it is the price of asking the document which characters are there, instead of inferring them from two bounding boxes.
+
 ## ADR-014 conditions
 
 | Condition | Evidence |
 |---|---|
 | Failing test first, synthetic fixture | `test_replacement_preserves_following_lines.py`, fixture generated inside the test. The round-1 RED commit (`1c0ae90`) is on `fix/CORE-001-reflow-drops-lines` and **not** in `master`'s history — `git merge-base --is-ancestor 1c0ae90 HEAD` exits **1**, because #186 was squash-merged and `ae28471` carries test and fix together. Round 2's RED is the neutralised-fitter run above |
-| No public contract change | `PDFModifier`'s functions, types and signatures unchanged; one private static helper changed, plus a fail-loud path on a fitting failure that reuses `PDFModifierError` — **no new exception type**, so every layer that already catches it handles this without edits |
+| No public contract change | `PDFModifier`'s functions, types and signatures unchanged; the fitter is private and grows two private helpers, and a fitting failure reuses `PDFModifierError` — **no new exception type**, so every layer that already catches it handles it without edits |
 | Scoped to the defect | The diff is the fitter's trim and its guard, plus the regression tests and this spec. Nothing else rides along |
 
 ## How this relates to #179

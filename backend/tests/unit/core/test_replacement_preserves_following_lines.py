@@ -94,11 +94,36 @@ def read_lines(path: Path) -> list[str]:
     return lines
 
 
+def read_span_texts(path: Path) -> list[str]:
+    """Every text object's own text, which is where a ONE-character residue shows up."""
+    doc = fitz.open(str(path))
+    texts = [
+        span["text"].strip()
+        for block in doc[0].get_text("dict")["blocks"]
+        for line in block.get("lines", [])
+        for span in line["spans"]
+    ]
+    doc.close()
+    return [text for text in texts if text]
+
+
+def surviving_value_spans(after_spans: list[str]) -> list[str]:
+    """Output text objects whose text is a piece of the replaced value.
+
+    The assertion a substring window cannot make at ONE character, which is the
+    length round 3's Finding 1 was: after a redaction rewrites what is left of the
+    object, a single surviving character is its own text object, so the span level
+    is where it is still visible as itself.
+    """
+    return [text for text in after_spans if text in TARGET]
+
+
 def run_replacement(tmp_path: Path, replacement: str, *, structure: str) -> tuple:
+    """Run one replacement over a generated block; return its lines before, after, and its path."""
     src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
     write_payment_block(src, structure=structure)
     PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements={TARGET: replacement}))
-    return read_lines(src), read_lines(out)
+    return read_lines(src), read_lines(out), out
 
 
 def missing_untouched_lines(before: list[str], after: list[str]) -> list[str]:
@@ -137,7 +162,7 @@ SIZES = ("wider", "narrower", "shorter")
 @pytest.mark.parametrize("replacement", REPLACEMENTS, ids=SIZES)
 def test_no_untouched_line_is_lost(tmp_path: Path, replacement: str, structure: str) -> None:
     """The original defect: a multi-object block loses the lines after the span."""
-    before, after = run_replacement(tmp_path, replacement, structure=structure)
+    before, after, out = run_replacement(tmp_path, replacement, structure=structure)
     missing = missing_untouched_lines(before, after)
     assert not missing, (
         f"the replacement of a {len(TARGET)}-character span in a "
@@ -147,6 +172,9 @@ def test_no_untouched_line_is_lost(tmp_path: Path, replacement: str, structure: 
     assert not surviving_fragments(
         "\n".join(after), replacement
     ), "part of the replaced value is still on the page"
+    assert not surviving_value_spans(
+        read_span_texts(out)
+    ), "a piece of the replaced value survives as its own text object"
 
 
 @pytest.mark.parametrize("replacement", REPLACEMENTS, ids=SIZES)
@@ -160,7 +188,7 @@ def test_no_untouched_line_is_lost_when_the_target_line_has_two_spans(
     onto itself, the guard returned the raw rect, and `ARC: 00` and `CVM: 5E0000`
     were dropped again -- the defect CORE-001 exists to fix, restored by its fix.
     """
-    before, after = run_replacement(tmp_path, replacement, structure="mixed-style-line")
+    before, after, out = run_replacement(tmp_path, replacement, structure="mixed-style-line")
     missing = missing_untouched_lines(before, after)
     assert not missing, (
         f"the replacement of a {len(TARGET)}-character span on a line drawn as two "
@@ -169,6 +197,58 @@ def test_no_untouched_line_is_lost_when_the_target_line_has_two_spans(
     assert not surviving_fragments(
         "\n".join(after), replacement
     ), "part of the replaced value is still on the page"
+    assert not surviving_value_spans(
+        read_span_texts(out)
+    ), "a piece of the value survives as its own object"
+
+
+SLIVER_LABEL = "ACCOUNT: "
+SLIVER_VALUE_X = 115.6
+
+
+def write_sliver_neighbour(path: Path) -> None:
+    """A label whose BOX overlaps the value's first glyph with no ink in common.
+
+    `ACCOUNT: ` ends in a space, so its box runs 5.4 pt past its ink. A value drawn
+    0.4 pt into that box overlaps the first glyph by 0.4 pt -- 7% of a 5.4 pt
+    glyph -- which `intersects` calls a hit and `apply_redactions` does not act on.
+    That is round 3's Finding 1, and it is ONE character long: no substring window
+    of two can see it.
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 72), "ARC: 00", fontname="cobo", fontsize=9)
+    page.insert_text((72, 83), SLIVER_LABEL, fontname="cobo", fontsize=9)
+    page.insert_text((SLIVER_VALUE_X, 83), TARGET, fontname="cobo", fontsize=9, color=(0, 0, 1))
+    page.insert_text((72, 94), "CVM: 5E0000", fontname="cobo", fontsize=9)
+    doc.save(str(path))
+    doc.close()
+
+
+@pytest.mark.parametrize("replacement", REPLACEMENTS, ids=SIZES)
+def test_no_character_of_the_value_survives_a_sub_character_overlap(
+    tmp_path: Path, replacement: str
+) -> None:
+    """Round 3's Finding 1: `intersects` is not the redactor's predicate.
+
+    A candidate kept because it *intersects* a glyph can leave that glyph in place,
+    because `apply_redactions` acts only from GLYPH_COVERAGE_FLOOR of the box
+    (measured at 10.0% of the width across five font sizes). The assertion is the
+    span-level one: a single surviving character is invisible to the two-character
+    window and to line-level inclusion, and this residue is one character long.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_sliver_neighbour(src)
+    PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements={TARGET: replacement}))
+
+    dropped = [line for line in ("ARC: 00", "CVM: 5E0000") if line not in read_lines(out)]
+    assert not dropped, f"a line beside the value was dropped: {dropped}"
+    residue = surviving_value_spans(read_span_texts(out))
+    assert not residue, (
+        f"the value is still on the page in pieces after a 0.4 pt overlap: {residue!r} "
+        f"survived, because the trim was accepted on `intersects` rather than on the "
+        f"share of the glyph the redactor actually needs"
+    )
 
 
 # The overprint shapes round 2 measured. Each one moves the second object to a
@@ -244,20 +324,88 @@ def test_no_untouched_line_is_lost_when_a_neighbour_overlaps_the_target(
     )
 
 
-class _StubPage:
-    """A page whose only text object sits where the test needs it.
+SHARED_LABEL = "ACCOUNT: "
+SHARED_VALUE_X = 84.0
 
-    The fitter reads the page through `get_text("rawdict")` alone, so the failing
-    fit can be pinned exactly instead of hoping a real layout collapses.
+
+def write_shared_ink_line(path: Path) -> None:
+    """A label whose INK runs under the value: 12 pt of real overlap, not a sliver.
+
+    No trim can separate these two objects -- their characters are drawn in the
+    same place -- so removing the target removes the characters it shares.
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 72), "ARC: 00", fontname="cobo", fontsize=9)
+    page.insert_text((72, 83), SHARED_LABEL, fontname="cobo", fontsize=9)
+    page.insert_text((SHARED_VALUE_X, 83), TARGET, fontname="cobo", fontsize=9, color=(0, 0, 1))
+    page.insert_text((72, 94), "CVM: 5E0000", fontname="cobo", fontsize=9)
+    doc.save(str(path))
+    doc.close()
+
+
+def test_a_label_sharing_the_target_ink_loses_exactly_the_shared_characters(
+    tmp_path: Path,
+) -> None:
+    """Round 3's Finding 2: accepted, stated, and pinned so it cannot GROW.
+
+    Removing the target removes the characters drawn where it is. There is no
+    geometry that separates them -- a redaction reaching one reaches the other -- so
+    the label loses the characters the rectangle covers. The alternatives were
+    refusing the whole document (worse for a receipt that is otherwise fine) and
+    re-inserting the neighbour's characters (a capability this repair does not add:
+    ADR-014 condition 3, and re-insertion through a subset-embedded font is the trap
+    `#179` lost a day to). What must not happen is the loss going unnoticed or
+    growing, so this row asserts the exact shape of it: the label survives as a
+    truncated prefix of itself, with nothing added, reordered or invented.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_shared_ink_line(src)
+    PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]}))
+    spans = read_span_texts(out)
+
+    dropped = [line for line in ("ARC: 00", "CVM: 5E0000") if line not in read_lines(out)]
+    assert not dropped, f"a line beside the value was dropped: {dropped}"
+    assert not surviving_value_spans(spans), "the replaced value left a piece behind"
+
+    label = SHARED_LABEL.strip()
+    survivors = [s for s in spans if s != label and label.startswith(s)]
+    assert len(survivors) == 1, f"the label must survive as one truncated run, not {spans!r}"
+    assert 0 < len(survivors[0]) < len(label), (
+        f"the surviving label {survivors[0]!r} is not shorter than {label!r}: the "
+        f"shared-ink deletion did not happen, so this row no longer pins anything"
+    )
+
+
+class _StubPage:
+    """A page whose text objects sit exactly where a test needs them.
+
+    The fitter reads the page through `get_text("rawdict")` alone, so a failing fit
+    can be pinned exactly instead of hoping a real layout produces one. `chars` is
+    what the fitter identifies the object being replaced by, so a span without them
+    is a different case -- the one the refusal row below pins.
     """
 
     number = 0
 
-    def __init__(self, spans: list[tuple[float, float, float, float]]) -> None:
+    def __init__(
+        self,
+        spans: list[tuple[float, float, float, float]],
+        *,
+        with_chars: bool = True,
+    ) -> None:
         self._spans = spans
+        self._with_chars = with_chars
 
     def get_text(self, _kind: str) -> dict[str, object]:
-        return {"blocks": [{"lines": [{"spans": [{"bbox": s} for s in self._spans]}]}]}
+        def span(box: tuple[float, float, float, float]) -> dict[str, object]:
+            entry: dict[str, object] = {"bbox": box}
+            if self._with_chars:
+                # One character box filling the span, which is all the fitter reads.
+                entry["chars"] = [{"bbox": box}]
+            return entry
+
+        return {"blocks": [{"lines": [{"spans": [span(b) for b in self._spans]}]}]}
 
 
 def test_a_collapsing_fit_raises_instead_of_redacting_the_raw_rect() -> None:
@@ -267,13 +415,32 @@ def test_a_collapsing_fit_raises_instead_of_redacting_the_raw_rect() -> None:
     rect here is the one that loses the neighbouring lines.
     """
     rect = fitz.Rect(100.0, 100.0, 100.01, 112.0)
-    # Same vertical band, so only x separates them: it overlaps the rect's left
-    # edge and, trimmed in x, leaves the rect inverted.
+    # Same vertical band, so only x separates them: it overlaps the rect's left edge
+    # and, trimmed in x, leaves the rect inverted.
     neighbour = (50.0, 100.0, 100.004, 112.0)
-    page = cast("fitz.Page", _StubPage([neighbour]))
+    # The object being replaced, which has to hold the rect's centre for the fit to
+    # know whose glyphs to protect.
+    target = (100.004, 100.0, 110.0, 112.0)
+    page = cast("fitz.Page", _StubPage([neighbour, target]))
 
     with pytest.raises(PDFModifierError) as raised:
         PDFModifier._fit_redaction_to_its_own_text_object(page, rect)
 
     assert "collapsed" in str(raised.value), "the fit must report the collapse it hit"
     assert raised.value.details["page"] == 1
+
+
+def test_a_target_that_cannot_be_identified_is_refused_not_trimmed_unguarded() -> None:
+    """No glyph boxes means no coverage rule, and nothing to trim against.
+
+    `all(... for glyph in [])` is True, so an unidentified object made every trim
+    "safe" and rounds 1 and 2's misclassifications would return silently (round-3
+    Finding 4). The same rule as the empty rectangle: refuse rather than proceed.
+    """
+    rect = fitz.Rect(100.0, 100.0, 100.01, 112.0)
+    page = cast("fitz.Page", _StubPage([(100.0, 100.0, 110.0, 112.0)], with_chars=False))
+
+    with pytest.raises(PDFModifierError) as raised:
+        PDFModifier._fit_redaction_to_its_own_text_object(page, rect)
+
+    assert "cannot be identified" in str(raised.value)

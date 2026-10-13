@@ -25,6 +25,18 @@ logger = setup_logging(__name__)
 
 DEFAULT_MAX_FILE_SIZE_BYTES: int = 100 * 1024 * 1024  # 100 MB
 
+# How much of a character's box a redaction rectangle must reach before
+# `apply_redactions` removes it. Measured, by bisecting the transition at 6, 9,
+# 12, 18 and 24 pt: the character goes at 10.0% of its **width** at every size,
+# so the rule is a fraction of the box rather than a fixed distance. `intersects`
+# is therefore NOT the redactor's predicate -- a rectangle reaching a glyph by a
+# 7% sliver passes `intersects` and the glyph survives, which is round 3's Finding
+# 1 (one character of the replaced value left under its replacement). 15% is above
+# the measured transition and above that sliver: being stricter than the redactor
+# costs a refused trim, and a refused trim only leaves the rectangle where it was,
+# while being laxer costs content, silently.
+GLYPH_COVERAGE_FLOOR: float = 0.15
+
 
 class PDFModifier:
     """
@@ -217,15 +229,23 @@ class PDFModifier:
         of this loop swallowing it and handing back a rect that no longer avoids
         the neighbours. A candidate that would leave a character of the object
         behind is REFUSED: `apply_redactions` removes a character only if the rect
-        reaches it, so accepting one would leave part of the replaced text on the
-        page under its replacement -- round 2's Major finding, where the neighbour
-        OVERLAPPED the target's glyph run and the x-trim cut inside it. Such a
-        neighbour is not one to trim against: it is the same ink, so the rect has
-        to cover both.
+        reaches it by `GLYPH_COVERAGE_FLOOR` of its box, so a candidate that merely
+        intersects a glyph leaves part of the replaced text on the page under its
+        replacement -- round 2's Major through the refused-trim path, and round 3's
+        through the trim path, one character long. Such a neighbour is not one to
+        trim against: it shares the target's ink, so the rect has to cover both.
         """
         if candidate.get_area() <= 0:
             return True
-        return all(candidate.intersects(glyph) for glyph in glyphs)
+        return all(PDFModifier._reaches_glyph(candidate, glyph) for glyph in glyphs)
+
+    @staticmethod
+    def _reaches_glyph(rect: fitz.Rect, glyph: fitz.Rect) -> bool:
+        """Whether `apply_redactions` would remove this glyph, by the measured rule."""
+        overlap = fitz.Rect(rect & glyph)
+        enough_width = overlap.width >= glyph.width * GLYPH_COVERAGE_FLOOR
+        enough_height = overlap.height >= glyph.height * GLYPH_COVERAGE_FLOOR
+        return bool(enough_width and enough_height)
 
     @staticmethod
     def _fit_redaction_to_its_own_text_object(page: fitz.Page, rect: fitz.Rect) -> fitz.Rect:
@@ -260,6 +280,12 @@ class PDFModifier:
         spans = PDFModifier._text_spans(page)
         target = next((span for span in spans if fitz.Rect(span["bbox"]).contains(centre)), None)
         glyphs = PDFModifier._glyph_boxes(target)
+        if not glyphs:
+            # No glyph boxes means no coverage rule, and `all()` over an empty list
+            # is True: every trim would be "safe" and rounds 1-2's misclassification
+            # would return silently. The same rule as the empty rect below -- refuse
+            # rather than proceed unguarded (round-3 Finding 4).
+            PDFModifier._refuse_unidentified_target(page, rect)
 
         trimmed = fitz.Rect(rect)
         for span in spans:
@@ -273,6 +299,27 @@ class PDFModifier:
         if trimmed.get_area() <= 0:
             PDFModifier._refuse_collapsed_fit(page, rect, trimmed)
         return trimmed
+
+    @staticmethod
+    def _refuse_unidentified_target(page: fitz.Page, rect: fitz.Rect) -> None:
+        """Refuse a fit whose target object could not be identified.
+
+        `_glyph_boxes` returns nothing when no span holds the rect's centre, and the
+        coverage rule is vacuous over an empty list: every trim would be accepted,
+        including the ones rounds 1 and 2 were failed for. An empty glyph list is a
+        refusal, not a licence to trim -- the rule the guard already applies to an
+        empty rectangle.
+        """
+        raise PDFModifierError(
+            f"Cannot fit the redaction rectangle to the replaced text object on "
+            f"page {page.number + 1}: no text object at "
+            f"{tuple(round(v, 3) for v in rect)} holds the rectangle's centre, so the "
+            f"characters being replaced cannot be identified.",
+            {
+                "page": page.number + 1,
+                "rect": [float(v) for v in rect],
+            },
+        )
 
     @staticmethod
     def _refuse_collapsed_fit(page: fitz.Page, rect: fitz.Rect, trimmed: fitz.Rect) -> None:
