@@ -1,7 +1,7 @@
 ---
 id: "CORE-001"
 type: spec
-status: verifying # draft | implementing | verifying | archived
+status: archived # draft | implementing | verifying | archived
 created: "2026-10-13"
 issue: "mlorentedev/pdf-modifier#179"   # repo#NNN — GitHub issue / Project item that tracks this spec
 risk: high   # the change lands inside core/modifier.py, which every other component trusts; the round-1 review's Blocker is why the declaration is machine-readable, not prose
