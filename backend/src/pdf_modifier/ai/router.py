@@ -10,7 +10,12 @@ from ..logger import setup_logging
 logger = setup_logging(__name__)
 
 # Fallback chain for main models
-FALLBACK_CHAIN: list[str] = ["mimo-v2.5", "qwen3.6", "gemma4"]
+#
+# Heads with `mimo-v2.6-flash`, the successor to `mimo-v2.5` that NaN retired on
+# 2026-09-30: it hung, then answered 401, and every VISION, TOOL_CALLING,
+# REASONING and REVIEW route failed outright. A 401 is fail-fast by policy, so
+# this chain never advanced to `qwen3.6` -- the fallback could not save it.
+FALLBACK_CHAIN: list[str] = ["mimo-v2.6-flash", "qwen3.6", "gemma4"]
 
 
 class TaskType(StrEnum):
@@ -31,9 +36,9 @@ class TaskType(StrEnum):
 
 # Default model mapping (defined after TaskType)
 DEFAULT_ROUTING: dict[TaskType, str] = {
-    TaskType.VISION: "mimo-v2.5",
-    TaskType.TOOL_CALLING: "mimo-v2.5",
-    TaskType.REASONING: "mimo-v2.5",
+    TaskType.VISION: "mimo-v2.6-flash",
+    TaskType.TOOL_CALLING: "mimo-v2.6-flash",
+    TaskType.REASONING: "mimo-v2.6-flash",
     TaskType.CLASSIFICATION: "qwen3.6",
     TaskType.TRANSLATION: "qwen3.6",
     TaskType.SUMMARIZATION: "qwen3.6",
@@ -41,7 +46,7 @@ DEFAULT_ROUTING: dict[TaskType, str] = {
     TaskType.RERANK: "rerank",
     TaskType.TTS: "kokoro",
     TaskType.STT: "whisper",
-    TaskType.REVIEW: "mimo-v2.5",
+    TaskType.REVIEW: "mimo-v2.6-flash",
 }
 
 
@@ -54,7 +59,7 @@ class ModelRouter:
     Example:
         >>> router = ModelRouter()
         >>> model = router.get_model(TaskType.VISION)
-        >>> print(model)  # "mimo-v2.5"
+        >>> print(model)  # "mimo-v2.6-flash"
     """
 
     def __init__(self, routing: dict[TaskType, str] | None = None) -> None:

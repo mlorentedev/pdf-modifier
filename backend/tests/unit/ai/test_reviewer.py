@@ -62,5 +62,5 @@ class TestAIReviewer:
 
     def test_default_model_from_router(self) -> None:
         reviewer = AIReviewer(client=_Unconfigured())
-        # REVIEW routes to mimo-v2.5 unless overridden by AI_REVIEW_MODEL.
-        assert reviewer.model == "mimo-v2.5"
+        # REVIEW routes to mimo-v2.6-flash unless overridden by AI_REVIEW_MODEL.
+        assert reviewer.model == "mimo-v2.6-flash"
