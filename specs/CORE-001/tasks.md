@@ -1,60 +1,28 @@
----
-tags: [spec, tasks, templates]
-created: "2026-10-12"
----
+# CORE-001 — tasks, in the order they were done
 
-# Tasks - CORE-001
+## Reproduce, before touching anything
 
-> TDD order. One task = one focused commit. Tick as you go. Reorder freely while spec is in `draft` state; freeze once you start `implementing`.
->
-> **Inline markers** (optional, additive — borrowed from `github/spec-kit`, adapt-not-adopt per #141):
-> - `[P]` — this task has **no dependency on another unchecked task**, so it is safe to run in parallel (fan out to a `Workflow`, or just batch). TDD chains (test → implement → refactor of the *same* behavior) are sequential and must NOT carry `[P]`; independent behaviors can.
-> - `[AC<n>]` — this task helps satisfy **acceptance criterion #`<n>`** from `proposal.md`. Lets `/spec check` map coverage deterministically; omit it and the check falls back to semantic judgment.
+- [x] Build a synthetic fixture and confirm it reproduces the loss: a block of ten short Courier-Bold lines as **one text object per line**. The same block built with a single `insert_textbox` loses nothing — so the structure had to be the one that fails.
+- [x] Cross the fixture with three replacement sizes (wider, narrower, four characters). All three lose the same two lines, which rules out "make the new text fit" as the mechanism.
 
-## Setup
+## RED
 
-- [ ] Branch created from main: `feat/CORE-001`
-- [ ] `proposal.md` is complete and acceptance criteria are testable
-- [ ] No open questions left in `proposal.md` "Risks / open questions"
+- [x] Write `backend/tests/unit/core/test_replacement_preserves_following_lines.py` and watch it fail: **3 failed, 3 passed** — the multi-object cases lose `ARC: 00` and `CVM: 5E0000`; the single-object cases lose nothing.
+- [x] Commit the failing test on its own (`1c0ae90`) so the RED state is in the history.
 
-## Implementation
+## Locate, by measurement
 
-> Replace these with the actual steps for this feature. Keep them small (one commit each) and in TDD order.
-> The `[P]` / `[AC<n>]` markers are optional — see the legend above. Behaviors 1 and 2 below are independent, so their *first* test task carries `[P]`.
+- [x] Redact **only** the target line's tight bounding box in isolation: three lines disappear. Consecutive line boxes overlap by **1.6 pt** (11 pt leading against 12.6 pt line height), and `apply_redactions` removes every text object that intersects.
+- [x] Record and discard two hypotheses that were plausible and wrong: the replacement's rendered width, and an embedded font (`get_fonts()` reported *embedded*; the font object is base-14 with no `/FontFile`).
 
-- [ ] [P] [AC1] Write failing test for <behavior 1>
-- [ ] [AC1] Implement <module/function> to make it pass
-- [ ] Refactor for clarity (extract, rename, dedupe)
-- [ ] [P] [AC2] Write failing test for <behavior 2>
-- [ ] [AC2] Implement to make it pass
-- [ ] ...
+## GREEN
 
-## Closing
+- [x] `_fit_redaction_to_its_own_text_object`: trim the rectangle away from the neighbours. The object being replaced is the one that **contains** the rect's centre; a neighbour can only overlap its edge.
+- [x] Guard against an empty rectangle, which would redact nothing and leave the original text under the replacement.
+- [x] `6 passed`; core suite `177 → 183`; `make check` **385 passed**, coverage **84.34%**.
+- [x] Verify against the **real document** with the substitution active: `ARC` and `CVM` present, new value in place, old value gone.
 
-- [ ] Every acceptance criterion from `proposal.md` is covered by at least one test
-- [ ] Every acceptance criterion has a matching entry in `features.json` (see below) with a non-vacuous verification command
-- [ ] Type checks pass
-- [ ] Lint passes
-- [ ] No unrelated changes in the diff (no scope creep)
-- [ ] `verification.md` filled in
-- [ ] PR opened referencing this spec folder
+## Close
 
-## Machine-readable features
-
-This spec emits a sibling `features.json` (alongside this file) following [[pattern-feature-list-as-primitive]]. The JSON is the harness-facing contract: each acceptance criterion maps to ≥1 feature with `id`, `behavior`, `verification` (executable command), `state` (lifecycle), and `evidence` (harness-captured output).
-
-**Pass-state gating:** the agent CANNOT write `"state": "passing"` — only the harness, after running `verification` and capturing exit code 0, may set that terminal state. Reviewers must reject PRs where features.json contains `passing` entries with empty `evidence`.
-
-Minimal `features.json` skeleton (drop into `<repo>/specs/CORE-001/features.json`):
-
-```json
-[
-  {
-    "id": "CORE-001-f1",
-    "behavior": "<one-line copy of an acceptance criterion>",
-    "verification": "<single shell command; exit 0 means pass>",
-    "state": "pending",
-    "evidence": ""
-  }
-]
-```
+- [ ] Independent adversarial review (`dotf spec review CORE-001`) — the implementer cannot sign this
+- [ ] Archive to `specs/archive/CORE-001/`
