@@ -1,7 +1,7 @@
 ---
 id: "CORE-006-verify-by-consequence"
 type: spec
-status: draft # draft | implementing | verifying | archived
+status: verifying # draft | implementing | verifying | archived
 created: "2026-10-13"
 issue: "mlorentedev/pdf-modifier#201"   # repo#NNN — GitHub issue / Project item that tracks this spec
 risk: high   # it changes how every page with a replacement is processed, in the two files ADR-014 closes

@@ -235,6 +235,21 @@ class PDFModifier:
         return best
 
     @staticmethod
+    def _same_line(target: fitz.Rect, other: fitz.Rect) -> bool:
+        """Whether two text objects sit on the same line.
+
+        Asked by SHARED VERTICAL EXTENT, not by whether one contains the other's
+        centre: with the leading under about 0.7 em the NEXT LINE's box contains the
+        centre, which is how the fitter came to mistake a neighbour for the object
+        being replaced. Two objects on one baseline overlap almost entirely -- a
+        label and a value, a watermark crossing a line -- while consecutive lines of
+        a tight block overlap by a fraction of their height.
+        """
+        overlap = fitz.Rect(target & other)
+        shorter = min(target.height, other.height)
+        return bool(shorter > 0 and overlap.height >= shorter * 0.9)
+
+    @staticmethod
     def _overlap_ratio(rect: fitz.Rect, other: fitz.Rect) -> float:
         """Intersection over union: how nearly two boxes are the same box."""
         overlap = fitz.Rect(rect & other)
@@ -442,6 +457,13 @@ class PDFModifier:
         items: list[dict[str, Any]],
     ) -> int:
         """Apply replacements to a single page. Returns count of replacements."""
+        # The page as it stands, before anything is removed. Predicting a safe
+        # rectangle has failed four review rounds in four geometries; this is what
+        # lets the consequence be checked instead -- see
+        # `_check_no_other_object_lost_characters`.
+        before = PDFModifier._text_spans(page)
+        redactions: list[tuple[fitz.Rect, dict[str, Any] | None]] = []
+
         for item in items:
             # fill=None (not white): removing the text glyphs must not paint a
             # box over the underlying PDF content (e.g. a colored invoice band),
@@ -449,10 +471,9 @@ class PDFModifier:
             # preserving the page background.
             rects = item["bboxes"] if "bboxes" in item else [item["bbox"]]
             for rect in rects:
-                page.add_redact_annot(
-                    self._fit_redaction_to_its_own_text_object(page, fitz.Rect(rect)),
-                    fill=None,
-                )
+                fitted = self._fit_redaction_to_its_own_text_object(page, fitz.Rect(rect))
+                redactions.append((fitted, PDFModifier._target_span(fitz.Rect(rect), before)))
+                page.add_redact_annot(fitted, fill=None)
 
         # Remove the redacted *text* but preserve the surrounding content.
         # fill=None avoids painting a foreign color (the old white fill hid the
@@ -463,7 +484,101 @@ class PDFModifier:
         for item in items:
             self._insert_replacement(page, item)
 
+        self._check_no_other_object_lost_characters(page, before, redactions)
         return len(items)
+
+    @staticmethod
+    def _glyph_index(spans: list[dict[str, Any]]) -> dict[tuple[str, float, float], int]:
+        """Every character on a page, keyed by itself and where it is drawn.
+
+        The comparison unit is the GLYPH, not the line and not the text object:
+        `get_text` assembles lines from spans, so an object that survived partially
+        comes back as a shorter object, and a line-level comparison would read that
+        as "a line changed" instead of "characters of an object were removed". The
+        position is rounded because the check asks whether the same character is
+        still drawn in the same place, not whether two floats agree to the last bit.
+        """
+        index: dict[tuple[str, float, float], int] = {}
+        for position, span in enumerate(spans):
+            for char in span.get("chars", []):
+                box = fitz.Rect(char["bbox"])
+                index[(char["c"], round(box.x0, 1), round(box.y0, 1))] = position
+        return index
+
+    @staticmethod
+    def _lost_characters(
+        before_spans: list[dict[str, Any]], after_spans: list[dict[str, Any]]
+    ) -> dict[int, list[str]]:
+        """Characters drawn before the redaction and absent after, by owning object."""
+        after = PDFModifier._glyph_index(after_spans)
+        lost: dict[int, list[str]] = {}
+        for key, owner in PDFModifier._glyph_index(before_spans).items():
+            if key not in after:
+                lost.setdefault(owner, []).append(key[0])
+        return lost
+
+    def _check_no_other_object_lost_characters(
+        self,
+        page: fitz.Page,
+        before: list[dict[str, Any]],
+        redactions: list[tuple[fitz.Rect, dict[str, Any] | None]],
+    ) -> None:
+        """Verify the consequence instead of trusting the fit: who lost characters?
+
+        A redaction removes characters, and the only ones it is ALLOWED to remove are
+        those of the object being replaced. Everything else that is missing is a
+        loss, and the two outcomes are the two the spec decided:
+
+        * an object on ANOTHER LINE that lost characters is the defect this whole
+          file is about -- a replacement dropping the lines that follow it -- and it
+          raises, naming the page and the object, instead of completing the document;
+        * an object sharing the target's line lost characters because their ink is in
+          the same place and no rectangle separates them (CORE-003, `#199`). That is
+          accepted -- refusing would fail a document the user cannot fix -- and it is
+          REPORTED, because accepted is not silent.
+
+        The glyph that vanished is what decides, not which rectangle was drawn: this
+        is the consequence, and it holds for any geometry the fitter gets wrong.
+        """
+        lost = PDFModifier._lost_characters(before, PDFModifier._text_spans(page))
+        for owner, characters in lost.items():
+            span = before[owner]
+            if any(span is target for _, target in redactions):
+                continue
+            self._dispose_of_lost_characters(page, span, redactions, characters)
+
+    def _dispose_of_lost_characters(
+        self,
+        page: fitz.Page,
+        span: dict[str, Any],
+        redactions: list[tuple[fitz.Rect, dict[str, Any] | None]],
+        characters: list[str],
+    ) -> None:
+        """Report a loss of a co-located object, or refuse when it is another line."""
+        box = fitz.Rect(span["bbox"])
+        co_located = any(
+            target is not None and PDFModifier._same_line(fitz.Rect(target["bbox"]), box)
+            for _, target in redactions
+        )
+        if co_located:
+            self._warnings.append(
+                f"page {page.number + 1}: {len(characters)} character(s) of a text "
+                f"object at {tuple(round(v, 1) for v in box)} were removed with the "
+                f"replacement, because its ink is drawn in the same place"
+            )
+            return
+        raise PDFModifierError(
+            f"Replacing text on page {page.number + 1} would lose {len(characters)} "
+            f"character(s) of another text object at {tuple(round(v, 1) for v in box)}, "
+            f"which is not the object being replaced ({''.join(characters[:12])!r} "
+            f"removed): no fitted rectangle spares it, and dropping a line is the "
+            f"defect this replacement exists to avoid.",
+            {
+                "page": page.number + 1,
+                "object": [float(v) for v in box],
+                "characters": "".join(characters),
+            },
+        )
 
     def _process_pages(
         self,

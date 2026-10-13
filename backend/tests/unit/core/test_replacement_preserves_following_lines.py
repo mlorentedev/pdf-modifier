@@ -126,13 +126,19 @@ def run_replacement(tmp_path: Path, replacement: str, *, structure: str) -> tupl
     return read_lines(src), read_lines(out), out
 
 
-def missing_untouched_lines(before: list[str], after: list[str]) -> list[str]:
+def missing_untouched_lines(
+    before: list[str], after: list[str], replaced: str | None = None
+) -> list[str]:
     """Set inclusion, not presence of expectations: the check that can see a deletion.
 
-    A line is allowed to be absent only if it is the one that was replaced.
+    A line is allowed to be absent only if it is the one that was replaced, and the
+    caller says which line that is: a fixture whose target line reads just the value
+    (the tight blocks and the watermark page) would otherwise report its own
+    replacement as a dropped line, which is the shape of a false alarm this file has
+    already been bitten by.
     """
-    replaced = f"AC:  {TARGET}"
-    return [line for line in before if line != replaced and line not in after]
+    target_line = f"AC:  {TARGET}" if replaced is None else replaced
+    return [line for line in before if line != target_line and line not in after]
 
 
 def surviving_fragments(after_text: str, replacement: str, window: int = 2) -> list[str]:
@@ -169,12 +175,10 @@ def test_no_untouched_line_is_lost(tmp_path: Path, replacement: str, structure: 
         f"{structure} block dropped {len(missing)} line(s) that were not "
         f"replaced: {missing}"
     )
-    assert not surviving_fragments(
-        "\n".join(after), replacement
-    ), "part of the replaced value is still on the page"
-    assert not surviving_value_spans(
-        read_span_texts(out)
-    ), "a piece of the replaced value survives as its own text object"
+    fragments = surviving_fragments("\n".join(after), replacement)
+    assert not fragments, "part of the replaced value is still on the page"
+    survived = surviving_value_spans(read_span_texts(out))
+    assert not survived, "a piece of the replaced value survives as its own text object"
 
 
 @pytest.mark.parametrize("replacement", REPLACEMENTS, ids=SIZES)
@@ -194,12 +198,10 @@ def test_no_untouched_line_is_lost_when_the_target_line_has_two_spans(
         f"the replacement of a {len(TARGET)}-character span on a line drawn as two "
         f"objects dropped {len(missing)} line(s) that were not replaced: {missing}"
     )
-    assert not surviving_fragments(
-        "\n".join(after), replacement
-    ), "part of the replaced value is still on the page"
-    assert not surviving_value_spans(
-        read_span_texts(out)
-    ), "a piece of the value survives as its own object"
+    fragments = surviving_fragments("\n".join(after), replacement)
+    assert not fragments, "part of the replaced value is still on the page"
+    survived = surviving_value_spans(read_span_texts(out))
+    assert not survived, "a piece of the value survives as its own object"
 
 
 SLIVER_LABEL = "ACCOUNT: "
@@ -432,9 +434,8 @@ def test_a_tight_block_is_refused_rather_than_losing_the_line_below(
         for span in line["spans"]
         if "".join(char["c"] for char in span["chars"]) == f"keepkeep{TIGHT_TARGET_LINE + 1}"
     )
-    assert raised.value.details["neighbour"] == [
-        float(v) for v in neighbour
-    ], "the refusal must name the line it protects, not a line at random"
+    named = raised.value.details["neighbour"]
+    assert named == [float(v) for v in neighbour], "the refusal must name the line it protects"
     assert not out.exists(), "a refused conversion must not leave a half-written document"
 
 
@@ -595,3 +596,126 @@ def test_a_target_that_cannot_be_identified_is_refused_not_trimmed_unguarded() -
         PDFModifier._fit_redaction_to_its_own_text_object(page, rect)
 
     assert "cannot be identified" in str(raised.value)
+
+
+AILING_BLOCKS = (
+    (12.0, 5.4),  # 0.45 em
+    (12.0, 7.2),  # 0.60 em -- the leading CORE-006 exists for
+    (12.0, 8.4),  # 0.70 em
+    (12.0, 9.0),  # 0.75 em
+    (9.0, 7.0),  # 0.78 em
+    (12.0, 12.0),  # 1.00 em
+    (9.0, 11.7),  # 1.30 em
+)
+
+
+def convert_or_refuse(src: Path, out: Path) -> str | None:
+    """Convert, returning the refusal message, or None when a file was written."""
+    try:
+        PDFModifier(str(src), str(out)).process(
+            ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+        )
+    except PDFModifierError as exc:
+        assert not out.exists(), "a refused conversion must not leave a half-written document"
+        return str(exc)
+    assert out.exists(), "a conversion that did not refuse must have written its output"
+    return None
+
+
+@pytest.mark.parametrize(
+    ("font", "leading"),
+    AILING_BLOCKS,
+    ids=[f"{font}pt-on{leading}pt" for font, leading in AILING_BLOCKS],
+)
+def test_no_leading_in_the_ailing_range_loses_characters_silently(
+    tmp_path: Path, font: float, leading: float
+) -> None:
+    """CORE-006: at every leading either the neighbours survive, or the fit refuses.
+
+    The fitter chooses its rectangle by predicting which one is safe, and the second
+    signer's two Majors are both that prediction failing. What this row asserts is
+    not that the prediction is right -- it is not, below about 0.72 em -- but that a
+    wrong prediction cannot pass unnoticed: either every line that was not the target
+    keeps its characters in the written file, or the conversion refuses.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_tight_leading_block(src, font=font, leading=leading)
+    before = read_lines(src)
+
+    if convert_or_refuse(src, out) is not None:
+        return  # loud, which is allowed: a refusal is the alternative to losing a line
+
+    missing = missing_untouched_lines(before, read_lines(out), TARGET)
+    assert not missing, (
+        f"a block at {leading / font:.2f} em leading converted and lost {missing} with no "
+        f"error and no warning: the defect CORE-006 exists to make impossible"
+    )
+
+
+def test_a_block_at_060_em_leading_is_refused_or_preserved(tmp_path: Path) -> None:
+    """The row that opens core/modifier.py: 0.60 em, the reproduced silent loss.
+
+    Measured on the base revision and again on CORE-001's head: at 12 pt on 7.2 pt
+    leading the fitter takes a neighbour for the object being replaced, two lines
+    lose their characters, and the conversion reports success. It is the one shape
+    in this file where a wrong prediction is still silent.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_tight_leading_block(src, font=12.0, leading=7.2)
+    before = read_lines(src)
+
+    if convert_or_refuse(src, out) is not None:
+        return
+
+    missing = missing_untouched_lines(before, read_lines(out), TARGET)
+    assert not missing, f"lines lost with no error at 0.60 em leading: {missing}"
+
+
+def test_a_planted_loss_is_caught_by_the_consequence_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The check must be shown to FIRE on a loss that is real but unintended.
+
+    The fitter is made to hand back the raw, unfitted rectangle -- CORE-001's own
+    original defect, and the shape `#179`'s receipt lost `ARC: 00` and `CVM: 5E0000`
+    to. With the trim bypassed the redaction reaches the neighbouring lines, and the
+    conversion must refuse rather than return a document with those lines gutted. A
+    consequence check that has never been shown to fire is a green check that reads
+    nothing.
+    """
+    monkeypatch.setattr(
+        PDFModifier,
+        "_fit_redaction_to_its_own_text_object",
+        staticmethod(lambda page, rect: fitz.Rect(rect)),
+    )
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_payment_block(src, structure="mixed-style-line")
+
+    with pytest.raises(PDFModifierError) as raised:
+        PDFModifier(str(src), str(out)).process(
+            ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+        )
+
+    message = str(raised.value)
+    assert "another text object" in message, f"the refusal must name what it protected: {message}"
+    assert not out.exists(), "a refused conversion must not leave a half-written document"
+
+
+def test_the_accepted_co_located_loss_is_reported_as_a_warning(tmp_path: Path) -> None:
+    """`#199`'s decision: the co-located loss is accepted, and therefore not silent.
+
+    No rectangle separates two objects drawn in the same place, so the conversion
+    must not refuse -- but `ModificationResult.warnings` already exists, so the
+    caller can be told which object's characters went with the redaction.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_shared_ink_line(src)
+
+    result = PDFModifier(str(src), str(out)).process(
+        ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+    )
+
+    assert result.success
+    reported = any("page 1" in warning for warning in result.warnings)
+    assert reported, f"the accepted co-located loss must be reported: {result.warnings}"
+    assert read_lines(out), "the conversion still has to produce a document"
