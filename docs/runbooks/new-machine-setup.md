@@ -21,8 +21,8 @@ Without it, nothing runs `gitleaks` before a commit.
 ## Steps
 
 ```bash
-git clone https://github.com/mlorentedev/pdf-modifier-mcp.git
-cd pdf-modifier-mcp
+git clone https://github.com/mlorentedev/pdf-modifier.git
+cd pdf-modifier
 make setup          # backend (uv sync) + frontend (npm install) + pdf.js worker copy
 make env            # writes infra/.env from .env.example with a fresh SECRET_KEY
 ```
@@ -48,7 +48,7 @@ That file is gitignored and copied from `node_modules` by `make setup` and
 ## Knowledge that does not travel with the clone
 
 - **Agent memory and session journals**: the maintainer's knowledge store
-  (`10_projects/pdf-modifier-mcp/` — `context.md`, `memory/`, `sessions/`). The
+  (`10_projects/pdf-modifier/` — `context.md`, `memory/`, `sessions/`). The
   agent memory directory is a symlink into it; recreate the link on the new machine.
 - **Backlog**: GitHub issues and the bitácora GitHub Project.
 - Everything build/operate lives here: `docs/adr/`, `docs/lessons/`,

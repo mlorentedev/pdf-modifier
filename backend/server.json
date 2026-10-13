@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.mlorentedev/pdf-modifier-mcp",
+  "name": "io.github.mlorentedev/pdf-modifier",
   "title": "PDF Modifier",
   "description": "Modify PDF text, replace with regex, and analyze layout while preserving fonts.",
   "repository": {
-    "url": "https://github.com/mlorentedev/pdf-modifier-mcp",
+    "url": "https://github.com/mlorentedev/pdf-modifier",
     "source": "github"
   },
   "version": "1.9.0",
   "packages": [
     {
       "registryType": "pypi",
-      "identifier": "pdf-modifier-mcp",
+      "identifier": "pdf-modifier",
       "version": "1.9.0",
       "runtimeHint": "uvx",
       "transport": {

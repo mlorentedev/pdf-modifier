@@ -3,17 +3,17 @@ import starlight from '@astrojs/starlight';
 
 export default defineConfig({
   site: 'https://mlorentedev.github.io',
-  base: '/pdf-modifier-mcp',
+  base: '/pdf-modifier',
   integrations: [
     starlight({
-      title: 'pdf-modifier-mcp',
+      title: 'pdf-modifier',
       favicon: '/favicon.svg',
       customCss: ['./src/styles/custom.css'],
       social: [
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/mlorentedev/pdf-modifier-mcp',
+          href: 'https://github.com/mlorentedev/pdf-modifier',
         },
       ],
       head: [
@@ -21,7 +21,7 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             property: 'og:title',
-            content: 'pdf-modifier-mcp',
+            content: 'pdf-modifier',
           },
         },
         {
@@ -43,7 +43,7 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             property: 'og:url',
-            content: 'https://mlorentedev.github.io/pdf-modifier-mcp/',
+            content: 'https://mlorentedev.github.io/pdf-modifier/',
           },
         },
       ],

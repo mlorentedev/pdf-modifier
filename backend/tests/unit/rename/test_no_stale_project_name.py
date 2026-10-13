@@ -20,6 +20,9 @@ from pathlib import Path
 # different.
 RETIRED_NAME = "pdf-modifier-mcp"
 
+# The guard's own path, as a constant so the exclusion key fits on one line.
+GUARD_FILE = "backend/tests/unit/rename/test_no_stale_project_name.py"
+
 # Historical records that name the project as it was called then. Rewriting them
 # to make this guard green would falsify the record, which is a worse defect than
 # a stale string in a document nobody installs. GitHub redirects the old repo
@@ -31,6 +34,10 @@ EXCLUSIONS: dict[str, str] = {
     "specs/": "spec folders are audit artifacts, including the issue they trace to",
     "backend/specs/": "pre-move spec artifacts, archived the same way",
     "backend/CHANGELOG.md": "release-please owns it; it narrates the old name by definition",
+    # The only self-exclusion. A guard that cannot name what it searches for cannot
+    # search for it, and this file names no product surface -- every path in
+    # LIVE_SURFACES below is still asserted to be outside this list.
+    GUARD_FILE: "this guard names the retired identity in order to search for it",
 }
 
 # Surfaces whose job is to be installed, executed or followed. None of these may
@@ -129,3 +136,18 @@ def test_no_live_surface_is_excluded() -> None:
         f"these live surfaces are inside the exclusion list, which silences the guard "
         f"exactly where it matters: {excluded}"
     )
+
+
+def test_the_distribution_lookup_resolves_under_the_new_name() -> None:
+    """`version("pdf-modifier")` must find the distribution, or importing the package raises.
+
+    The guard above cannot see this defect: it fails on a string that is PRESENT,
+    and this one is a string that is GONE from a lookup that is now dead. Renaming
+    the distribution without renaming `importlib.metadata.version(...)` leaves a
+    repo that greps clean and raises `PackageNotFoundError` on `import`.
+    """
+    from importlib.metadata import version
+
+    import pdf_modifier
+
+    assert pdf_modifier.__version__ == version("pdf-modifier")

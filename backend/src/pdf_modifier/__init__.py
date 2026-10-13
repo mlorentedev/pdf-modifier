@@ -1,5 +1,5 @@
 """
-PDF Modifier MCP - A dual-interface PDF modification tool.
+PDF Modifier - A dual-interface PDF modification tool.
 
 Provides both CLI (pdf-mod) and MCP server interfaces for PDF manipulation.
 """
@@ -15,7 +15,7 @@ from .core import (
     ReplacementSpec,
 )
 
-__version__ = version("pdf-modifier-mcp")
+__version__ = version("pdf-modifier")
 
 __all__ = [
     "PDFAnalyzer",

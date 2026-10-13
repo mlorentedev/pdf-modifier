@@ -1,12 +1,12 @@
-<!-- mcp-name: io.github.mlorentedev/pdf-modifier-mcp -->
+<!-- mcp-name: io.github.mlorentedev/pdf-modifier -->
 
-# PDF Modifier MCP
+# PDF Modifier
 
-[![CI](https://github.com/mlorentedev/pdf-modifier-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mlorentedev/pdf-modifier-mcp/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/pdf-modifier-mcp)](https://pypi.org/project/pdf-modifier-mcp/)
-[![codecov](https://codecov.io/gh/mlorentedev/pdf-modifier-mcp/graph/badge.svg)](https://codecov.io/gh/mlorentedev/pdf-modifier-mcp)
+[![CI](https://github.com/mlorentedev/pdf-modifier/actions/workflows/ci.yml/badge.svg)](https://github.com/mlorentedev/pdf-modifier/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pdf-modifier)](https://pypi.org/project/pdf-modifier/)
+[![codecov](https://codecov.io/gh/mlorentedev/pdf-modifier/graph/badge.svg)](https://codecov.io/gh/mlorentedev/pdf-modifier)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Docs](https://img.shields.io/badge/docs-live-blue.svg)](https://mlorentedev.github.io/pdf-modifier-mcp/)
+[![Docs](https://img.shields.io/badge/docs-live-blue.svg)](https://mlorentedev.github.io/pdf-modifier/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Give your AI coding assistant the ability to natively read, edit, and redact PDF documents.**
@@ -15,7 +15,7 @@ Most AI assistants can generate Python scripts to edit PDFs, but running them re
 
 **The numbers:**
 
-| Metric | Without PDF Modifier MCP | With PDF Modifier MCP |
+| Metric | Without PDF Modifier | With PDF Modifier |
 |---|---|---|
 | Workflow | AI writes script -> You run it -> Debug errors | AI edits PDF directly via MCP |
 | Time to redact 10 invoices | ~15 minutes (trial & error) | Seconds (autonomous) |
@@ -28,12 +28,12 @@ One command. No cloning, no venv. **Use user scope (`-s user`) so the tools are 
 
 ### Claude Code
 ```bash
-claude mcp add -s user pdf-modifier -- uvx --upgrade pdf-modifier-mcp
+claude mcp add -s user pdf-modifier -- uvx --upgrade pdf-modifier
 ```
 
 ### Gemini CLI
 ```bash
-gemini mcp add -s user pdf-modifier uvx -- --upgrade pdf-modifier-mcp
+gemini mcp add -s user pdf-modifier uvx -- --upgrade pdf-modifier
 ```
 
 ### OpenAI Codex CLI
@@ -41,7 +41,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.pdf-modifier]
 command = "uvx"
-args = ["--upgrade", "pdf-modifier-mcp"]
+args = ["--upgrade", "pdf-modifier"]
 ```
 
 ### GitHub Copilot (VS Code)
@@ -52,7 +52,7 @@ Add to `.vscode/mcp.json` or your User Settings:
     "servers": {
       "pdf-modifier": {
         "command": "uvx",
-        "args": ["--upgrade", "pdf-modifier-mcp"]
+        "args": ["--upgrade", "pdf-modifier"]
       }
     }
   }
@@ -100,7 +100,7 @@ pdf-mod modify input.pdf output.pdf -r "Click Here=Visit Site|https://example.co
 
 ## Before / After
 
-**Before PDF Modifier MCP** — Manual scripting workflow:
+**Before PDF Modifier** — Manual scripting workflow:
 ```python
 # The AI generates a script like this for you to run:
 import fitz
@@ -111,7 +111,7 @@ for page in doc:
 doc.save("out.pdf")
 ```
 
-**With PDF Modifier MCP** — Autonomous AI action:
+**With PDF Modifier** — Autonomous AI action:
 ```python
 # The AI natively calls the tool without asking you to run scripts
 modify_pdf_content(
@@ -126,7 +126,7 @@ modify_pdf_content(
 ```text
 MCP Host (Claude, Gemini, Copilot)
   ↓ MCP protocol (stdio)
-pdf-modifier-mcp (FastMCP Server)
+pdf-modifier (FastMCP Server)
   │
   ├── Core Layer (PDFModifier, PDFAnalyzer)
   │     ├── Regex matching & text extraction
@@ -141,8 +141,8 @@ pdf-modifier-mcp (FastMCP Server)
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code standards, and PR workflow.
 
 ```bash
-git clone https://github.com/mlorentedev/pdf-modifier-mcp.git
-cd pdf-modifier-mcp
+git clone https://github.com/mlorentedev/pdf-modifier.git
+cd pdf-modifier
 make setup     # create venv + install deps
 make check     # lint + typecheck + test
 ```

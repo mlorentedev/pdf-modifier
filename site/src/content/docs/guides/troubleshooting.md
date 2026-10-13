@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Common problems and solutions when using pdf-modifier-mcp.
+description: Common problems and solutions when using pdf-modifier.
 ---
 
 ## Text not being replaced
@@ -90,11 +90,11 @@ If not installed, install [uv](https://docs.astral.sh/uv/getting-started/install
 ### Test the server directly
 
 ```bash
-uvx pdf-modifier-mcp
+uvx pdf-modifier
 ```
 
 The server communicates over stdio. You should see no output (it's waiting for JSON-RPC input). Press `Ctrl+C` to exit.
 
 ### Verify client configuration
 
-Each MCP client has its own configuration format. See the [Getting Started](/pdf-modifier-mcp/getting-started/#mcp-server) guide for client-specific setup instructions.
+Each MCP client has its own configuration format. See the [Getting Started](/pdf-modifier/getting-started/#mcp-server) guide for client-specific setup instructions.

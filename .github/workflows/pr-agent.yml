@@ -16,16 +16,16 @@ name: pr-agent
 # checked here.
 #
 # NAN_API_KEY is NOT yet a secret in this repository (checked 2026-09-06:
-# `gh api repos/mlorentedev/pdf-modifier-mcp/actions/secrets` lists BITACORA_PAT,
+# `gh api repos/mlorentedev/pdf-modifier/actions/secrets` lists BITACORA_PAT,
 # DOCKERHUB_TOKEN, DOCKERHUB_USERNAME, RELEASE_TOKEN). Until the owner runs
-# `dotf secrets sync ci --repo mlorentedev/pdf-modifier-mcp`, the PR-Agent step runs
+# `dotf secrets sync ci --repo mlorentedev/pdf-modifier`, the PR-Agent step runs
 # with an empty key, publishes nothing, and the guard step below fails with a message
 # naming the missing secret. That is the intended degradation: a red check that says
 # "no review was published" rather than a green one that says nothing.
 #
 # The name `pr-agent` is a two-file agreement in the repos that have the attestation
 # gate: `review-attestation.yml` declares `workflow_run: workflows: [pr-agent]` so the
-# verdict is re-read after this job finishes. pdf-modifier-mcp has no gate workflow yet,
+# verdict is re-read after this job finishes. pdf-modifier has no gate workflow yet,
 # so nothing depends on this name today — when the gate lands, it must name this
 # workflow exactly.
 

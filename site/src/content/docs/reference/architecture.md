@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: Technical architecture of pdf-modifier-mcp — layers, data flow, and design decisions.
+description: Technical architecture of pdf-modifier — layers, data flow, and design decisions.
 ---
 
 ## Overview
