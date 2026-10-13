@@ -154,21 +154,57 @@ def test_attestation_declares_the_observed_pr_agent_marker() -> None:
     assert pr_agent, f"no reviewer entry declares the {PR_AGENT_MARKER!r} marker"
 
 
-def test_every_reviewer_records_its_marker_provenance() -> None:
+def marker_provenance_problems(reviewers: list[dict]) -> list[str]:
+    """Return one problem string per marker that has no recorded provenance.
+
+    Per MARKER, not per reviewer: a single note containing the word "measured"
+    would otherwise cover a second, never-observed marker added beside the first,
+    which is exactly the vacuity this rule exists to prevent.
+    """
+    problems: list[str] = []
+    for r in reviewers:
+        login = str(r.get("login", "?"))
+        why = str(r.get("why", ""))
+        if "measured" not in why.lower():
+            problems.append(f"{login}: `why` records no measurement at all")
+            continue
+        problems.extend(
+            f"{login}: `why` does not say where {marker!r} was observed"
+            for marker in r.get("review_markers", [])
+            if marker not in why
+        )
+    return problems
+
+
+def test_every_declared_marker_records_its_own_provenance() -> None:
     """`review_markers ARE MEASURED HERE, NOT COPIED` -- this file's own rule, made executable.
 
     A marker declared without a measurement is a claim about an actor nobody has
     observed, and the reading it produces is a green check that scans nothing.
-    Named for the general rule, not for one marker: the point is that every entry
-    says where its marker was seen.
     """
     registry = json.loads(ATTESTATION_PATH.read_text(encoding="utf-8"))
-    unmeasured = [
-        r.get("login", "?")
-        for r in registry["reviewers"]
-        if "measured" not in str(r.get("why", "")).lower()
-    ]
-    assert not unmeasured, (
-        f"these reviewer entries declare review markers without recording where they "
-        f"were observed: {unmeasured}"
+    problems = marker_provenance_problems(registry["reviewers"])
+    assert not problems, (
+        "these reviewer entries declare a marker without recording where it was "
+        f"observed: {problems}"
     )
+
+
+def test_marker_provenance_detector_catches_a_marker_riding_on_another_note() -> None:
+    """The guard must trip on a second marker covered only by the first one's note."""
+    measured_note = "Measured 2026-10-12: '## One' appears on 3 of 7 PRs."
+    planted = [
+        {"login": "clean", "review_markers": ["## One"], "why": measured_note},
+        {"login": "unmeasured", "review_markers": ["## Two"], "why": "Declared for parity."},
+        {
+            "login": "rideshare",
+            "review_markers": ["## One", "## Two"],
+            "why": measured_note,
+        },
+    ]
+
+    problems = marker_provenance_problems(planted)
+
+    assert any(p.startswith("unmeasured:") for p in problems)
+    assert any(p.startswith("rideshare:") and "## Two" in p for p in problems)
+    assert not [p for p in problems if p.startswith("clean:")]
