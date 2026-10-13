@@ -476,9 +476,11 @@ leading=14.0 wm_y=140 wm_first=True:  OK lost=[]   (and 7 more, all OK)
 
 Pinned by four rows (`test_a_large_object_behind_the_text_does_not_decide_whether_the_page_converts`), with the watermark-last variants as controls. RED, restoring the first-containing-span rule: exactly the two watermark-FIRST rows fail and the controls stay green — a mutation that pins the fix rather than the symptom.
 
-### Open: below about 0.72 em the same root cause still loses lines SILENTLY
+### CLOSED by CORE-006: below about 0.72 em the same root cause used to lose lines SILENTLY
 
-The same misidentification has a second shape, which this round did **not** fix. With the leading under about 0.72 em it is the *neighbour* whose box contains the centre, so the loop skips it as "the target", and the real target's neighbours are redacted with no error:
+> **Closed 2026-10-13 by CORE-006** (`specs/archive/CORE-006-verify-by-consequence/`, archived at `fb6f87a`), which implemented the design argued for at the end of this section: the consequence is verified instead of the rectangle being predicted. The reproduction below is kept as the record of what was wrong, and `f9` in `features.json` no longer carries it as open. What was reproduced:
+>
+> The same misidentification has a second shape, which this round did **not** fix. With the leading under about 0.72 em it is the *neighbour* whose box contains the centre, so the loop skips it as "the target", and the real target's neighbours are redacted with no error:
 
 ```
 $ uv run python /tmp/sub07.py
@@ -488,7 +490,7 @@ cobo 12/8.4 (0.70): converted lost=['ROW03']   new=True
 helv 11/4.95 (0.45): converted lost=['ROW03', 'ROW05'] new=True
 ```
 
-**It is not a regression**: the base commit loses the same lines at the same leadings, and `f9` in `features.json` now says so instead of claiming the whole sub-glyph-height range is refused. It is a REAL Major against this spec's own acceptance criterion ("a replacement must not drop the lines that follow it"), it is reproduced above, and it is filed as CORE-004 (`#201`), raised from THEORETICAL to REAL by the reproduction.
+**It was not a regression**: the base commit loses the same lines at the same leadings. It was a REAL Major against this spec's own acceptance criterion ("a replacement must not drop the lines that follow it"), reproduced above and filed as CORE-004 (`#201`), raised from THEORETICAL to REAL by the reproduction. **CORE-006 closed it**: at 0.45, 0.60 and 0.70 em the pages now REFUSE (`would lose 9 character(s) of another text object`), at 0.75/0.78 em this spec's trim guard refuses as before, and at 0.83 em and above nothing is lost and the conversion proceeds. The identification defect itself is still CORE-004's; what changed is that a wrong identification can no longer drop a line in silence.
 
 ### What was tried, and why it was reverted
 
@@ -498,9 +500,9 @@ Three attempts, all reverted, recorded so the next session does not repeat them:
 2. **Deriving the axis from which overlap dominates** (share of the line width ⇒ stacked, otherwise beside). Fails the co-located rows: a stamp nested inside the value shares most of the line width, so a same-line object was told to trim on y, and 19 existing rows went red.
 3. **Skipping the identified target instead of whatever holds the centre** (`span is target`), keeping the axis rule. Closes nothing and re-opens Major 1: the watermark then becomes a neighbour to trim against, and every watermark page refuses again.
 
-### The design this spec now argues for instead
+### The design this spec argued for instead, and which CORE-006 shipped
 
-Trimming *predicts* which rectangle is safe and has now failed four review rounds in different geometry. The alternative is to check the consequence instead of predicting it: apply the redaction to the page, re-read the page's text, and refuse if any line that was not the target lost characters — the same shape as `#182`'s lesson that exit status is not evidence and the changed artifact is. It is finite, geometry-independent, and testable at every leading from 0.45 em to 1.27 em, which is exactly where the prediction keeps failing. It is **not** implemented here: it is a change to how the page is processed, not a repair of the defect this spec was opened for, and it needs its own ADR-014 justification and its own review. Recorded as the recommended option in CORE-004 (`#201`).
+Trimming *predicts* which rectangle is safe and has now failed four review rounds in different geometry. The alternative is to check the consequence instead of predicting it: apply the redaction to the page, re-read the page's text, and refuse if any line that was not the target lost characters — the same shape as `#182`'s lesson that exit status is not evidence and the changed artifact is. It is finite, geometry-independent, and testable at every leading from 0.45 em to 1.27 em, which is exactly where the prediction keeps failing. It was **not** implemented here: it is a change to how the page is processed, not a repair of the defect this spec was opened for, and it needed its own ADR-014 justification and its own review. Recorded as the recommended option in CORE-004 (`#201`), then specified and built as **CORE-006** -- including the two rounds of its own second signature that found the attribution Major, the two-predicate confusion and the whitespace rule.
 
 ### Verdict of this round
 

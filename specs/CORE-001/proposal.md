@@ -6,7 +6,7 @@ created: "2026-10-13"
 issue: "mlorentedev/pdf-modifier#179"   # repo#NNN — GitHub issue / Project item that tracks this spec
 risk: high   # the change lands inside core/modifier.py, which every other component trusts; the round-1 review's Blocker is why the declaration is machine-readable, not prose
 review: required
-review_round: 4   # rounds 1-3 (nan/mimo-v2.6-flash, then nan/deepseek-v4-flash x2) returned FAIL; a review is not recyclable, so each round is relaunched against the frozen head
+review_round: 7   # rounds 1-3 (nan/mimo-v2.6-flash, then nan/deepseek-v4-flash x2) returned FAIL, round 4 PASS, round 5 PASS, round 6 PASS at the final head; second signature rounds 1-2 FAILED and round 3 PASSED. A review is not recyclable, so each round is relaunched against the frozen head.
 tags: [spec, proposal]
 template_version: "1.0"
 ---
