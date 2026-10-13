@@ -113,6 +113,16 @@ Added to the M1-M7 above, all measured on the code this revision ships. The tree
 | M9 | drop "the rectangle's target is on the lost line" | **7** | The other half of the attribution is pinned by the sweep, the planted loss and the page-naming rows. |
 | M10 | count whitespace again | **1** | Only the whitespace row sees it, in the direction that matters: a dropped space must not refuse a document. |
 
+## Round 3 (first signature, at `65d2eef`): PASS WITH GAPS, no code change
+
+`nan/deepseek-v4-flash` re-measured everything at the fixed head and raised no code defect. Its findings, dispositioned:
+
+- **The carried Major, again THEORETICAL.** This round confirms the classification and **reproduced no avoidable loss** in any geometry it tried; the only real-document instance any round has found remains a whitespace-only span. Tracked as CORE-007 (`#209`), which now also carries the predictive guards that refuse documents the check would have converted and the last-writer-wins glyph key (added from the second signature's own measurements).
+- **Stale evidence counts.** `features.json` f4 said 43 in the file and f6 said 424 in the suite; the numbers at this head are 46 and 427. Corrected. `contract_digest.go` folds `state`/`evidence` before digesting, so this does not stale the review that found it -- the same normalisation as the checkbox drift above.
+- **The reporting surfaces.** CORE-008 (`#210`) is filed and ADR-015's "reaches every interface" sentence is corrected in this revision, naming the two surfaces that do not read `warnings` (the SvelteKit frontend, the CLI batch table) rather than leaving the overstatement.
+- **The second signature is stale by construction.** `review-second.md` is a FAIL at `e6a418c`, before the fix it demanded; `risk: high` needs a passing second signature at this head, which is launched with this revision. Recorded because a FAIL at an older sha is the exact thing that looks like a satisfied gate if nobody reads the sha.
+- **Scope of the union.** The stacked pieces (CORE-001's trim rewrite, `#204`, `#207`, `.gitignore`) are named per commit under "Provenance" above, and the PR body carries the same list: AC5 is judged against the union, and the union is not what the PR title says.
+
 ## Checkbox and evidence drift, and why it needed no re-review
 
 Both reviews found `proposal.md`'s acceptance-criteria boxes still `[ ]` while `tasks.md` and `features.json` said the work was done. It is drift, not missing work, and it is fixed here rather than left open: `contract_digest.go` normalises list-checkbox state before digesting -- *ticking `- [ ]` to `- [x]` is progress and a review whose own finding was "tick the boxes" does not invalidate itself* (`#998` part 2) -- so ticking them leaves both reviews fresh against the same contract content. The same normalisation covers `features.json`'s `state` and `evidence`, which are harness-written progress rather than contract. Nothing else in the contract set was edited: no criterion was reworded, no task added.
