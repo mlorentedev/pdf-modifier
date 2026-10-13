@@ -157,22 +157,27 @@ def test_attestation_declares_the_observed_pr_agent_marker() -> None:
 def marker_provenance_problems(reviewers: list[dict]) -> list[str]:
     """Return one problem string per marker that has no recorded provenance.
 
-    Per MARKER, not per reviewer: a single note containing the word "measured"
-    would otherwise cover a second, never-observed marker added beside the first,
-    which is exactly the vacuity this rule exists to prevent.
+    Per MARKER, and against a LIST of sightings rather than prose. Scanning `why`
+    for the marker string accepted a note recording that the heading was observed
+    ZERO times -- the note names the marker, so the marker could be declared while
+    its own evidence said nobody had ever seen it. A non-empty list has no such
+    reading: an unobserved marker has no sighting to record.
     """
     problems: list[str] = []
     for r in reviewers:
         login = str(r.get("login", "?"))
-        why = str(r.get("why", ""))
-        if "measured" not in why.lower():
-            problems.append(f"{login}: `why` records no measurement at all")
-            continue
-        problems.extend(
-            f"{login}: `why` does not say where {marker!r} was observed"
-            for marker in r.get("review_markers", [])
-            if marker not in why
-        )
+        measured = r.get("markers_measured") or {}
+        for marker in r.get("review_markers", []):
+            entry = measured.get(marker)
+            if not isinstance(entry, dict):
+                problems.append(f"{login}: no `markers_measured` entry for {marker!r}")
+                continue
+            seen = entry.get("observed_in")
+            if not isinstance(seen, list) or not seen:
+                problems.append(
+                    f"{login}: the entry for {marker!r} records no observation "
+                    f"(observed_in={seen!r}); a marker nobody has seen cannot be declared"
+                )
     return problems
 
 
@@ -190,21 +195,30 @@ def test_every_declared_marker_records_its_own_provenance() -> None:
     )
 
 
-def test_marker_provenance_detector_catches_a_marker_riding_on_another_note() -> None:
-    """The guard must trip on a second marker covered only by the first one's note."""
-    measured_note = "Measured 2026-10-12: '## One' appears on 3 of 7 PRs."
+def test_marker_provenance_detector_catches_the_zero_observation_form() -> None:
+    """The guard must reject a marker whose own note says it was seen zero times.
+
+    That is the form the prose check could not tell from provenance: the note
+    names the marker, and the marker gets declared on evidence that says nobody
+    has ever seen it.
+    """
     planted = [
-        {"login": "clean", "review_markers": ["## One"], "why": measured_note},
-        {"login": "unmeasured", "review_markers": ["## Two"], "why": "Declared for parity."},
         {
-            "login": "rideshare",
-            "review_markers": ["## One", "## Two"],
-            "why": measured_note,
+            "login": "clean",
+            "review_markers": ["## One"],
+            "markers_measured": {"## One": {"on": "2026-10-12", "observed_in": ["#1"]}},
         },
+        {
+            "login": "zero-observation",
+            "review_markers": ["## Two"],
+            "why": "Measured 2026-10-12: '## Two' appears on none of those 7.",
+            "markers_measured": {"## Two": {"on": "2026-10-12", "observed_in": []}},
+        },
+        {"login": "unrecorded", "review_markers": ["## Three"], "markers_measured": {}},
     ]
 
     problems = marker_provenance_problems(planted)
 
-    assert any(p.startswith("unmeasured:") for p in problems)
-    assert any(p.startswith("rideshare:") and "## Two" in p for p in problems)
+    assert any(p.startswith("zero-observation:") for p in problems)
+    assert any(p.startswith("unrecorded:") for p in problems)
     assert not [p for p in problems if p.startswith("clean:")]

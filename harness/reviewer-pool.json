@@ -35,10 +35,11 @@
     "EVIDENCE BAR. The SSOT requires a measured review, not a model name, before a",
     "member is admitted. Entries ported here carry the SSOT's recorded evidence,",
     "attributed as such in `why`, because that measurement was done there and is not",
-    "repeated by copying a name. This repo's own measured run is recorded in",
-    "specs/CI-001-harness-review-pool-parity/verification.md and is the evidence for",
-    "the membership it exercises; members with neither attribution nor a run here do",
-    "not belong in this list."
+    "repeated by copying a name. This repo's own measured run is the OUTSTANDING half, not a",
+    "recorded one: it is scheduled as AC3 in",
+    "specs/CI-001-harness-review-pool-parity/verification.md's verification window and has not",
+    "happened yet, so membership here rests on the SSOT attribution above until it lands. Members",
+    "with neither attribution nor a run here do not belong in this list."
   ],
   "pool": [
     {
