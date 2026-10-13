@@ -71,6 +71,8 @@ site/.astro/
 # other checkout. The archive rules below cover the copies that outlive a spec.
 specs/*/review-transcript.jsonl
 specs/*/review-transcript.jsonl.stderr
+specs/*/review-second-transcript.jsonl
+specs/*/review-second-transcript.jsonl.stderr
 specs/archive/*/review-transcript.jsonl
 specs/archive/*/review-request.json
 specs/archive/*/review-transcript.jsonl.stderr

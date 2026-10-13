@@ -25,7 +25,7 @@
     "behavior": "Every document that converts today still converts — the two-span receipt line, the three overprint shapes, 10 pt-on-8 pt, 12 pt-on-10 pt, and the watermark page in both span orders. An unnecessary refusal is the same defect as a silent loss, in the other direction.",
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 46 passed in the file, 223 in tests/unit/core, 427 via `make check` — the 32 pre-existing rows unchanged, which is what caught the first implementation over-refusing. (A third review found this entry still said 43/424; the counts are re-measured here.)"
+    "evidence": "passed: 48 passed in the file, 225 in tests/unit/core, 429 via `make check` — the 32 pre-existing rows unchanged, which is what caught the first implementation over-refusing."
   },
   {
     "id": "CORE-006-f5",
@@ -39,6 +39,6 @@
     "behavior": "The existing suite passes unchanged and the extra cost is measured and stated: one more page-text read per page with a replacement, against CORE-005's 1.35 s for 70 matches on an 840-span page.",
     "verification": "cd backend && uv run pytest -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 427 passed, 19 skipped. Cost: 2.95 s with the check against 2.87 s without on 840 spans / 70 matches, i.e. +0.08 s (+3 %), beside CORE-005's 1.35 s for the same match count; two independent reviews measured +0.7 % and +2.0 % on their own pages, the same order. (This entry said 424/85.27 %; a third review found it stale and the counts are re-measured here.)"
+    "evidence": "passed: 429 passed, 19 skipped. Cost: the check adds +0.08 s (+3 %) on 840 spans / 70 matches (2.95 s against 2.87 s); two independent reviews measured +0.7 % and +2.0 % on their own pages, the same order. The conversion as a whole is +29 % slower than at the base commit (1.26 s -> 1.63 s on the same page), which is CORE-001's trim rewrite plus this check and belongs to CORE-005 (`#202`) to recover; measured by the second signature, recorded here rather than outside the spec."
   }
 ]

@@ -859,3 +859,52 @@ def test_a_vanished_letter_is_a_lost_character() -> None:
     lost = PDFModifier._lost_characters(before, after)
 
     assert ["".join(key[0] for key in keys) for keys in lost.values()] == ["a"]
+
+
+def test_an_ordinary_replacement_reports_no_loss(tmp_path: Path) -> None:
+    """The target's exemption is what keeps an ordinary page quiet.
+
+    Removing it (`if False: continue`) leaves this whole file green, because the
+    only warnings assertion in it is the positive one: a check that warned on every
+    ordinary conversion would have shipped unnoticed, and the warning would be
+    FALSE -- the target's own characters are the ones the replacement is allowed to
+    remove. Asserting the empty list is the row that can fail.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_payment_block(src, structure="mixed-style-line")
+
+    result = PDFModifier(str(src), str(out)).process(
+        ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+    )
+
+    assert result.success
+    assert result.warnings == [], f"an ordinary conversion reported a loss: {result.warnings}"
+
+
+def test_the_watermark_page_reports_the_same_loss_in_both_span_orders(tmp_path: Path) -> None:
+    """Whatever this page loses, SPAN ORDER must not decide it.
+
+    The page-sized object behind the text genuinely loses characters -- a 60 pt
+    `DRAFT` crossing the lines has ink no rectangle can separate from the target's --
+    and that loss is REPORTED, which is correct. What must not differ is the answer:
+    identifying the target by "the first span containing the rect's centre" (the rule
+    CORE-001 round 4 replaced) made the watermark-drawn-first page fail while the
+    watermark-drawn-last one converted, and every core test stayed green while it
+    did. Two orders, one result -- the assertion is equality, not emptiness, because
+    an empty list would be a false expectation about this page.
+    """
+    reports: dict[bool, list[str]] = {}
+    for watermark_first in (True, False):
+        src = tmp_path / f"in-{watermark_first}.pdf"
+        out = tmp_path / f"out-{watermark_first}.pdf"
+        write_large_object_under_the_text(src, leading=13.2, watermark_first=watermark_first)
+
+        result = PDFModifier(str(src), str(out)).process(
+            ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+        )
+
+        assert result.success
+        reports[watermark_first] = list(result.warnings)
+
+    same = reports[True] == reports[False]
+    assert same, f"span order changed what the page loses: {reports[True]} vs {reports[False]}"
