@@ -1,33 +1,45 @@
 {
   "$comment": [
-    "Reviewer pool for /adversarial-review — the allow-list of models permitted to SIGN a",
-    "review.md, and therefore what `dotf spec archive` accepts as a passing gate. Ported from",
-    "dotfiles/harness/reviewer-pool.json (SSOT of the shape and of these ids) via the ts-bridge",
-    "port; kubelab and ts-bridge are the precedent for carrying a port per repo.",
+    "Reviewer pool for this repository: the allow-list of models permitted to SIGN a",
+    "review.md (which `dotf spec archive` enforces), and the draw PR-Agent reviews from.",
     "",
-    "Standing rule inherited from the SSOT: an adversarial review never runs on an Anthropic",
-    "model. The reviewer must not be the implementer, and Claude-class models implement nearly",
-    "every change in this repo — dotfiles BUG-074 was reviewed twice by claude-opus-5 before",
-    "anyone noticed, which is the incident the pool exists to prevent.",
+    "PORT PROVENANCE. Ported from the SSOT at dotfiles/harness/reviewer-pool.json,",
+    "git ref e31c4ee4, file sha256",
+    "fe9d42551e7a5ca8c03ccd4f5a9a49991ec68a62e7c8bd86596e3bbdabcb3a66.",
+    "This repo keeps its own copy because a pool is read from the checked-out repo;",
+    "the SHAPE and these ids stay governed by the SSOT, so re-port rather than invent.",
     "",
-    "Entries are model IDS, not tool names, and `provider`/`model` are pinned explicitly rather",
-    "than parsed out of `id` or inherited from a runner default: pi's own default provider is",
-    "google and its configured default lives in unversioned per-machine state. A pin that",
-    "depends on a default is not a pin.",
+    "STANDING RULE (dotfiles#1923, amendment B, 2026-10-09). An Anthropic model never",
+    "signs a review ALONE. Every signed review keeps a first signature from another",
+    "vendor; an Anthropic member signs only as `signs: second` (beside a first signer",
+    "of another vendor) or as `signs: fallback` (in place of the first signers when",
+    "they failed for a classified reason the launch names). `dotf spec archive`",
+    "enforces it: the pool refuses to load an Anthropic entry that would sign first,",
+    "and the gate checks roles, reason, and that the vendors differ. The reviewer must",
+    "not be the implementer, and Claude implements nearly every change in this repo --",
+    "that is the incident (dotfiles BUG-074) this file exists to prevent.",
     "",
-    "Reasoning-class only. The latency-optimised daily models are excluded deliberately: a",
-    "reviewer that PASSes cheaply is worse than no gate, because it converts the gate into a",
-    "green checkmark. This file is read once per spec, so slow is fine.",
+    "TWO CONSUMERS, ONE FILE. The archive gate runs `reviewer`/`provider`/`model`",
+    "through `dotf spec review`; PR-Agent reads each `pr_agent` block for its model,",
+    "its weight in the CI draw and its reasoning effort. A member added for one flow",
+    "becomes a candidate in the other, so the two readings must stay consistent and",
+    "the CI preflight chain is derived from this file rather than kept beside it.",
     "",
-    "Order is provenance, not precedence — the launcher draws one member at random and",
-    "--reviewer names one deliberately. NaN's concurrency limit is PER MODEL, so a saturation",
-    "on one id is answered by falling through to another, which is why the provider-diverse",
-    "arm sits above the second NaN sibling rather than below it.",
+    "WEIGHTS ARE THE SSOT'S ALLOCATION, PORTED AS PARITY (2026-10-12). The drawn",
+    "members' weights sum to 100: deepseek 19, mimo 27, glm 19, anthropic 35. They",
+    "were calibrated in dotfiles against that repo's review volume, and this repo",
+    "spends from the SAME Anthropic console key and its shared monthly limit, so the",
+    "shares here are borrowed and not yet measured. Recalibrate with this repo's own",
+    "numbers once there are any.",
     "",
-    "Subset of the dotfiles pool (which also carries nan/glm5.3-flash and nan/qwen3.8-flash,",
-    "admitted 2026-08-29): this repo had no port at all (ported 2026-09-06), so it starts from the three members",
-    "kubelab has actually exercised. Adding members here is a decision with the same evidence",
-    "bar as the SSOT — a measured review, not a model name."
+    "EVIDENCE BAR. The SSOT requires a measured review, not a model name, before a",
+    "member is admitted. Entries ported here carry the SSOT's recorded evidence,",
+    "attributed as such in `why`, because that measurement was done there and is not",
+    "repeated by copying a name. This repo's own measured run is the OUTSTANDING half, not a",
+    "recorded one: it is scheduled as AC3 in",
+    "specs/CI-001-harness-review-pool-parity/verification.md's verification window and has not",
+    "happened yet, so membership here rests on the SSOT attribution above until it lands. Members",
+    "with neither attribution nor a run here do not belong in this list."
   ],
   "pool": [
     {
@@ -37,25 +49,98 @@
       "model": "deepseek-v4-flash",
       "secret_id": "NAN_API_KEY",
       "role": "primary",
-      "why": "1M context and a mandatory reasoning chain. Slow on trivial prompts, which is the correct trade for a gate that runs once per spec. Exercised in the sibling ports: it re-ran a mutation battery itself rather than trusting the spec's table."
+      "vendor": "deepseek",
+      "pr_agent": {
+        "model": "openai/deepseek-v4-flash",
+        "weight": 19
+      },
+      "why": "1M context and a mandatory reasoning chain. Slow on trivial prompts, which is the correct trade for a gate that runs once per spec. SSOT evidence: it re-ran a mutation battery itself rather than trusting the spec's table. Held a lane of its own in dotfiles so the blocking archive gate and the advisory CI review do not share one per-model concurrency bucket."
     },
     {
       "id": "agy/gemini-3.1-pro-high",
       "runner": "agy",
       "model": "gemini-3.1-pro-high",
       "role": "fallback",
+      "vendor": "google",
       "auth": "login",
-      "why": "Provider-diverse: independent of both NaN and Anthropic. Pro tier at high effort; the flash tiers are excluded for the same reason the daily models are. agy has no --provider flag — the model id selects the family. AUTH IS LOGIN, not a key: agy holds an OAuth token and answers with no API key in the environment, so this arm must not be wired to a secret the registry does not declare (dotfiles #1156 found an arm that had never once run for exactly that reason)."
+      "why": "Provider-diverse: independent of both NaN and Anthropic. Pro tier at high effort; the flash tiers are excluded for the same reason the latency-optimised daily models are. agy has no --provider flag -- the model id selects the family. AUTH IS LOGIN, not a key: agy holds an OAuth token and answers with no API key in the environment, so this arm must not be wired to a secret the registry does not declare (dotfiles #1156 found an arm that had never once run for exactly that reason)."
     },
     {
-      "id": "nan/mimo-v2.5",
+      "id": "nan/mimo-v2.6-flash",
       "runner": "pi",
       "provider": "nan",
-      "model": "mimo-v2.5",
+      "model": "mimo-v2.6-flash",
       "secret_id": "NAN_API_KEY",
       "role": "fallback",
-      "why": "Reasoning-class by profile (1M context, reasoning chain). Admitted in the SSOT on 2026-08-20 with its evidence boundary recorded honestly: a real, correct finding was demonstrated on a planted defect, but no quality ranking against deepseek was established, so this entry is not a claim of equivalence. Second fallback, after the provider-diverse arm, because provider diversity is the stronger property.",
-      "operational_note": "Reasoning models here emit reasoning_content BEFORE content. Under-provisioning max_tokens returns an empty body with finish_reason=length and no error — the same shape as a review that silently did not happen. Provision generously and check finish_reason."
+      "vendor": "xiaomi",
+      "pr_agent": {
+        "model": "openai/mimo-v2.6-flash",
+        "weight": 27
+      },
+      "operational_note": "Reasoning models here emit reasoning_content BEFORE content. Under-provisioning max_tokens returns an empty body with finish_reason=length and no error -- the same shape as a review that silently did not happen. Provision generously and check finish_reason. NaN recommends max_tokens >= 300 for this model and publishes a per-model concurrency limit of 5.",
+      "why": "The successor to mimo-v2.5, which NaN retired on 2026-09-30: it hung, then answered 401, and every PR got a green job with no review. SSOT evidence: re-admitted on this file's bar rather than renamed in -- mimo-v2.6-flash found the `((count++))` exit-status-1 case under `set -e` in 21 s and 772 completion tokens, naming a failing input and giving the fix. This repo's application router still names the retired predecessor; that is issue #168, a different surface."
+    },
+    {
+      "id": "nan/glm5.3-flash",
+      "runner": "pi",
+      "provider": "nan",
+      "model": "glm5.3-flash",
+      "secret_id": "NAN_API_KEY",
+      "role": "member",
+      "vendor": "zhipu",
+      "pr_agent": {
+        "model": "openai/glm5.3-flash",
+        "weight": 19,
+        "reasoning_effort": "low"
+      },
+      "why": "Admitted to spread reviews across NaN's PER-MODEL concurrency buckets, so a saturation on one id is answered by another rather than by a failed review. SSOT evidence boundary, recorded so this entry is not read as measured equivalence to deepseek: reasoning-class by profile, and NO calibration against a review of known outcome. In PR-Agent it must run at reasoning_effort low -- at its default it reasons until NaN closes the stream at 60,000 reasoning characters and publishes nothing (dotfiles lesson 370). The NaN step sets the effort and lists glm in the additional-effort-models setting, because PR-Agent sends an effort to a model LiteLLM does not know only when it is listed."
+    },
+    {
+      "id": "nan/qwen3.8-flash",
+      "runner": "pi",
+      "provider": "nan",
+      "model": "qwen3.8-flash",
+      "secret_id": "NAN_API_KEY",
+      "role": "member",
+      "vendor": "alibaba",
+      "why": "Admitted to spread reviews across NaN's per-model concurrency buckets. SSOT evidence boundary: reasoning-class by profile with a 1,048,576-token served window, and NO calibration against a review of known outcome. It declares no pr_agent block on purpose: it is available on the gate and in the model pickers without taking a share of the CI draw, and a member that is offered but not routed is not drift."
+    },
+    {
+      "id": "anthropic-review/claude-haiku-5-5",
+      "runner": "pi",
+      "provider": "anthropic-review",
+      "model": "claude-haiku-5-5",
+      "secret_id": "REVIEW_ANTHROPIC_API_KEY",
+      "role": "fallback",
+      "vendor": "anthropic",
+      "signs": "fallback",
+      "pr_agent": {
+        "model": "anthropic/claude-haiku-5-5",
+        "weight": 35,
+        "reasoning_effort": "high"
+      },
+      "why": "In the adversarial review it signs only as a FALLBACK, with a classified reason (rate limit, quota, provider error, timeout, content filter, empty answer) when the first signers failed; it never signs first by draw. In PR-Agent it is the only Anthropic member drawn, at weight 35, because there it is cheap: SSOT measured about $0.008 a review at 30K tokens, and NaN's shared per-model concurrency is the scarcer resource. Reasoning-class by profile (adaptive thinking at high effort). Reads REVIEW_ANTHROPIC_API_KEY through the `anthropic-review` provider, which is the same credential as the CI key under a name of its own."
+    },
+    {
+      "id": "anthropic-review/claude-sonnet-5-5",
+      "runner": "pi",
+      "provider": "anthropic-review",
+      "model": "claude-sonnet-5-5",
+      "secret_id": "REVIEW_ANTHROPIC_API_KEY",
+      "role": "second",
+      "vendor": "anthropic",
+      "signs": "second",
+      "pr_agent": {
+        "model": "anthropic/claude-sonnet-5-5",
+        "route": "risk",
+        "reasoning_effort": "medium"
+      },
+      "why": "The quality tier, placed where it pays: the SECOND signature of a `risk: high` spec, and in PR-Agent the first review of a PR past `pr_agent_risk`. Never drawn at random in either flow: SSOT measured about $0.37 a review on a risky PR, and a uniform share would spend the month's budget in a week. It exists so a second signature differs in vendor from the first, which is what makes amendment B's rule checkable rather than merely stated."
     }
-  ]
+  ],
+  "pr_agent_risk": {
+    "min_changed_lines": 1500,
+    "label": "deep-review",
+    "$comment": "A PR reviews first on the `route: risk` member when its additions plus deletions reach min_changed_lines, or it carries the label. 1500 is the SSOT's owner-calibrated threshold (dotfiles, 2026-10-09): over 395 merged PRs there, 9.1% reached 900 lines, 4.8% reached 1200 and 3.0% reached 1500, and a path-based predicate matched 14-35% and was rejected as too costly. Ported here as parity alongside the weights; recalibrate with this repo's numbers when there are any. Add the label to a small PR whose risk is not in its size (secrets, auth, CI permissions)."
+  }
 }

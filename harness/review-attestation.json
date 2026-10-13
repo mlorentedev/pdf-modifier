@@ -31,7 +31,15 @@
     "",
     "Note the asymmetry that survives this: a CodeRabbit run that files ONLY a formal review with no",
     "walkthrough comment still reads as 'no reviewer output yet'. That is a property of the tool, which",
-    "scans comments, and it is why pr-stewardship still asks a human to read the diff."
+    "scans comments, and it is why pr-stewardship still asks a human to read the diff.",
+    "",
+    "`markers_measured` IS A LOCAL ADDITION, not in the SSOT port. The SSOT states the rule as prose",
+    "in this file -- `review_markers ARE MEASURED HERE, NOT COPIED` -- and prose cannot be checked.",
+    "A test that looks for the marker string inside `why` accepts a note that says the heading was",
+    "observed ZERO times, which is the unmeasured state the rule forbids: the note mentions the marker",
+    "and the marker gets declared. So each entry records, per declared marker, WHERE it was seen, as a",
+    "non-empty list -- a zero-observation note has no list to give and cannot pass. A repository that",
+    "inherits this file can keep `why` as the human account and trust `markers_measured` as the claim."
   ],
   "reviewers": [
     {
@@ -45,7 +53,13 @@
         "## Walkthrough"
       ],
       "advisory": true,
-      "why": "ADVISORY, same disposition as the dotfiles, kubelab and ts-bridge registries: its REVIEW attests, its DECLINE does not refuse. CodeRabbit's quota is a third party's billing state rather than a property of the change; measured over #111..#129, three PRs (#121, #123, #129) drew 'Review limit reached', so a decline that REFUSED would go red on real work and teach everyone to ignore it. An advisory decline yields `pending`, the honest answer: a reviewer that could not run is not a reviewer that refused. LOGINS MATCH WITH TRAILING '[bot]' STRIPPED AND CASE FOLDED, because the two GitHub APIs disagree: REST reports coderabbitai[bot], GraphQL reports coderabbitai. The dotfiles 'no complaints' review marker is deliberately NOT reused -- see the $comment on review_markers."
+      "markers_measured": {
+        "## Walkthrough": {
+          "on": "2026-09-06",
+          "observed_in": ["#111", "#114", "#117", "#124", "#126", "#128", "#129"]
+        }
+      },
+      "why": "ADVISORY, same disposition as the dotfiles, kubelab and ts-bridge registries: its REVIEW attests, its DECLINE does not refuse. CodeRabbit's quota is a third party's billing state rather than a property of the change; measured over #111..#129, three PRs (#121, #123, #129) drew 'Review limit reached', so a decline that REFUSED would go red on real work and teach everyone to ignore it. An advisory decline yields `pending`, the honest answer: a reviewer that could not run is not a reviewer that refused. LOGINS MATCH WITH TRAILING '[bot]' STRIPPED AND CASE FOLDED, because the two GitHub APIs disagree: REST reports coderabbitai[bot], GraphQL reports coderabbitai. The dotfiles 'no complaints' review marker is deliberately NOT reused -- see the $comment on review_markers. MARKER PROVENANCE: `## Walkthrough` is the attesting heading, measured 2026-09-06 over the comments of #111..#129 -- it appears on #111, #114, #117, #124, #126, #128 and #129, and never alone beside a decline, which is why the declines are listed separately above."
     },
     {
       "login": "github-actions",
@@ -53,7 +67,13 @@
       "review_markers": [
         "## PR Reviewer Guide"
       ],
-      "why": "PR-Agent (see .github/workflows/pr-agent.yml) runs under GITHUB_TOKEN and publishes through the COMMENTS api, so its reviews never enter reviews[] and a classifier that looked only at reviews would read every PR-Agent-reviewed PR as unattested. The marker is the `review` command's own heading. `## PR Code Suggestions` is deliberately NOT here — suggestions are not a review, which is also why auto_improve is off on the automatic path. MARKER PROVENANCE: verified in the sibling ports before being declared here — kubelab has 215 PR comments carrying '## PR Reviewer Guide' posted by github-actions[bot] and dotfiles has 172. It has NEVER been observed in pdf-modifier-mcp, because this workflow has not run here and NAN_API_KEY is not yet set in this repository: the first green run of pr-agent on a pdf-modifier-mcp PR is the verification, and until then this entry is a declaration of intent, not of an actor. The same login also posts release-please's 'Created releases' comment (#122); that text carries no marker, so it cannot attest."
+      "markers_measured": {
+        "## PR Reviewer Guide": {
+          "on": "2026-10-12",
+          "observed_in": ["#171", "#170", "#167"]
+        }
+      },
+      "why": "PR-Agent (see .github/workflows/pr-agent.yml) runs under GITHUB_TOKEN and publishes through the COMMENTS api, so its reviews never enter reviews[] and a classifier that looked only at reviews would read every PR-Agent-reviewed PR as unattested. The marker is the `review` command's own heading. `## PR Code Suggestions` is deliberately NOT here — suggestions are not a review, which is also why auto_improve is off on the automatic path. MARKER PROVENANCE: verified in the sibling ports before being declared here — kubelab has 215 PR comments carrying '## PR Reviewer Guide' posted by github-actions[bot] and dotfiles has 172. It is now OBSERVED HERE: measured 2026-10-12, the marker appears on 3 of the last 7 PRs (#171, #170, #167) and on none of the four Dependabot PRs, which the workflow skips. `## Incremental PR Reviewer Guide` is deliberately NOT declared: measured 2026-10-12, it appears on none of those 7. Declaring a marker WIDENS this gate, so an unobserved heading waits until the reworked workflow emits it (CI-001 PR2) rather than being copied from the SSOT, which is what this file's own rule forbids. The same login also posts release-please's 'Created releases' comment (#122); that text carries no marker, so it cannot attest."
     }
   ],
   "triage": {

@@ -49,7 +49,7 @@ frontend/src/                # SvelteKit 5 + pdf.js UI
 ├── lib/utils/               # grouping, highlight, scroll, zoom (+ colocated *.test.ts)
 └── routes/                  # +layout.svelte, +page.svelte
 
-backend/specs/               # Spec-Driven Development artifacts (+ archive/)
+specs/                       # Spec-Driven Development artifacts (+ archive/)
 backend/tests/               # pytest suite
 frontend/e2e/                # Playwright end-to-end suite
 docs/                        # adr/ · lessons/ · runbooks/ · troubleshooting/
@@ -75,7 +75,7 @@ site/                        # Astro + Starlight docs site
 2. **TDD is mandatory.** RED → GREEN → REFACTOR for every task.
 3. **Conventional commits.** `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`.
 4. **No manual version bumps.** release-please owns versioning: it opens a release PR from the conventional-commit history. Merging that PR cuts the tag and publishes.
-5. **Specs before code.** Every feature >50 LOC needs `backend/specs/<id>/` with proposal + tasks + verification; archive to `backend/specs/archive/<id>/` once merged.
+5. **Specs before code.** Every feature >50 LOC needs `specs/<id>/` with proposal + tasks + verification; archive to `specs/archive/<id>/` once merged. (`dotf spec init` writes `specs/<id>/`; `backend/specs/` keeps only its historical README and the earlier `archive/`.)
 6. **ADRs for decisions.** Non-reversible decisions go in `docs/adr/adr-XXX.md`.
 7. **No secrets in code.** API keys via env vars only. `gitleaks` pre-commit hook enforced.
 8. **Async-aware.** FastAPI is async; core is sync. Use `anyio.to_thread.run_sync` for core calls.
@@ -163,6 +163,6 @@ Fallback on: 429, 404, 5xx. Fail fast on: 400, 401.
 | pattern-nan-builders-gateway | Throttle, fallback, enable_thinking |
 | pattern-python-cli | Typer CLI preserved |
 | pattern-secrets-security | gitleaks, age, no secrets in code |
-| pattern-spec-driven-development | backend/specs/<id>/ per feature |
+| pattern-spec-driven-development | specs/<id>/ per feature |
 | pattern-testing-standards | TDD, mutation testing |
 | pattern-workflow-protocol | Knowledge placement (ADRs → repo docs/) |
