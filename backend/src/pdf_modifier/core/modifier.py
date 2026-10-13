@@ -165,6 +165,41 @@ class PDFModifier:
             self._doc.close()
             self._doc = None
 
+    @staticmethod
+    def _fit_redaction_to_its_own_text_object(page: fitz.Page, rect: fitz.Rect) -> fitz.Rect:
+        """Shrink a redaction rect so it cannot reach the neighbouring text objects.
+
+        `apply_redactions` removes every text object that INTERSECTS the rect, not
+        only the glyphs inside it. Consecutive line boxes in a tight block overlap:
+        11 pt of leading against 12.6 pt of line height leaves 1.6 pt of overlap, so
+        a rect fitted to the target's own box also intersects the lines above and
+        below and takes them with it. Only the replacement is re-inserted, so they
+        are lost silently -- a receipt in `#179` lost `ARC` and `CVM` this way.
+
+        The object being replaced is the one that CONTAINS the rect's centre; a
+        neighbour can only overlap its edge. Trimming the rect away from the
+        neighbours leaves the target fully removed (its object still intersects)
+        while sparing the rest, which a re-insertion could not do for a
+        subset-embedded font whose glyphs may not be re-encodable.
+        """
+        trimmed = fitz.Rect(rect)
+        centre = fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+        for block in page.get_text("dict")["blocks"]:
+            for line in block.get("lines", []):
+                for span in line["spans"]:
+                    other = fitz.Rect(span["bbox"])
+                    if other.contains(centre) or not other.intersects(trimmed):
+                        continue
+                    if other.y1 <= centre.y:
+                        trimmed.y0 = max(trimmed.y0, other.y1 + 0.01)
+                    else:
+                        trimmed.y1 = min(trimmed.y1, other.y0 - 0.01)
+        # Never hand an empty rect to the redactor: it would remove nothing and
+        # leave the original text in place under the replacement.
+        if trimmed.get_area() <= 0:
+            return fitz.Rect(rect)
+        return trimmed
+
     def _apply_replacements_to_page(
         self,
         page: fitz.Page,
@@ -176,11 +211,12 @@ class PDFModifier:
             # box over the underlying PDF content (e.g. a colored invoice band),
             # otherwise the replaced field shows a white rectangle instead of
             # preserving the page background.
-            if "bboxes" in item:
-                for bbox in item["bboxes"]:
-                    page.add_redact_annot(bbox, fill=None)
-            else:
-                page.add_redact_annot(item["bbox"], fill=None)
+            rects = item["bboxes"] if "bboxes" in item else [item["bbox"]]
+            for rect in rects:
+                page.add_redact_annot(
+                    self._fit_redaction_to_its_own_text_object(page, fitz.Rect(rect)),
+                    fill=None,
+                )
 
         # Remove the redacted *text* but preserve the surrounding content.
         # fill=None avoids painting a foreign color (the old white fill hid the
