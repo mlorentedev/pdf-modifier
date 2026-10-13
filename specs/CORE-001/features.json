@@ -15,16 +15,30 @@
   },
   {
     "id": "CORE-001-f3",
-    "behavior": "A redaction rectangle that cannot be fitted to the text object being replaced is REPORTED. It is never silently swapped for the raw, unfitted rectangle -- that fall-through was the mechanism of the Blocker -- and never silently degenerated, because a 0.02 pt rect removes no glyph at all.",
-    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_collapsing_fit_raises_instead_of_redacting_the_raw_rect -q --no-cov",
+    "behavior": "No fragment of the replaced value is left on the page -- checked as a second assertion on every row, because set inclusion cannot see a line that survived PARTIALLY: that is an extra line, not a missing one. Round 2's Major finding produced exactly that, and round 1's rows would have passed it.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov -k \"not collapsing\"",
     "state": "pending",
-    "evidence": "passed: 1 passed. The fit raises PDFModifierError naming the page and both rectangles; checked it fires 0 times across the 183-test core suite before it was made loud."
+    "evidence": "passed: 18 passed. RED with the coverage rule neutralised alone: 10 failed (the 9 overlap rows + the guard), everything else green."
   },
   {
     "id": "CORE-001-f4",
+    "behavior": "A neighbour that OVERLAPS the target's own glyph run -- an overprint, a stamp, a doubled text object -- is not trimmed against, so the replaced value cannot survive beneath its replacement. Three shapes (head, nested, tail) x the same three replacement sizes; the overlapping object goes with the target, since a redaction reaching one of two objects sharing a glyph run reaches the other.",
+    "verification": "cd backend && uv run pytest \"tests/unit/core/test_replacement_preserves_following_lines.py::test_no_untouched_line_is_lost_when_a_neighbour_overlaps_the_target\" -q --no-cov",
+    "state": "pending",
+    "evidence": "passed: 9 passed. RED with the coverage rule neutralised: all 9 fail, leaving ['48','68','89','8D','D4'] (head, nested) or ['25','A2'] (tail) of the old value on the page."
+  },
+  {
+    "id": "CORE-001-f5",
+    "behavior": "A redaction rectangle that cannot be fitted to the text object being replaced is REPORTED. It is never silently swapped for the raw, unfitted rectangle -- that fall-through was the mechanism of the round-1 Blocker -- and never silently degenerated, because a 0.02 pt rect removes no glyph at all. Accepted as a document-level failure: refusing beats corrupting.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_collapsing_fit_raises_instead_of_redacting_the_raw_rect -q --no-cov",
+    "state": "pending",
+    "evidence": "passed: 1 passed. The branch was measured as reached 0 times in 68 fits over the whole suite before it was made loud."
+  },
+  {
+    "id": "CORE-001-f6",
     "behavior": "AC5: the existing suite passes unchanged -- this repairs a defect, it does not change intended behaviour. No pre-existing test is modified or deleted; the diff adds the one regression file.",
     "verification": "cd backend && uv run pytest -q --no-cov",
     "state": "pending",
-    "evidence": "passed: 391 passed, 19 skipped (was 387 passed, 19 skipped); `make check` green, coverage 84.38%, ruff and mypy --strict clean."
+    "evidence": "passed: 400 passed, 19 skipped; `make check` green, coverage 84.63%, ruff and mypy --strict clean."
   }
 ]

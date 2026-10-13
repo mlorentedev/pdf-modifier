@@ -35,5 +35,16 @@
 ## Close
 
 - [x] Independent adversarial review, round 1 (`dotf spec review CORE-001`) — **FAIL**: one REAL Blocker (above) plus two minor findings. The archive gate refused, correctly.
-- [ ] Independent adversarial review, round 2 — **fresh**, because a review is not recyclable and the branch moved after it
+- [x] Independent adversarial review, round 2 (`nan/deepseek-v4-flash`) — **FAIL**: one REAL Major (round 3 below), three minors. Round 1's Blocker was confirmed genuinely closed, by independent reproduction of four shapes the spec never tested.
+- [ ] Independent adversarial review, round 3 — **fresh**, because a review is not recyclable and the branch moved after each one
 - [ ] Archive to `specs/archive/CORE-001/`
+
+## Fix round 2 — the review's Major finding (round 2: **FAIL**)
+
+- [x] Reproduce the finding end to end: a same-band neighbour that **overlaps the target's own glyph run**. The x-trim cut inside the target, redaction is per character, and `68D489` — the first six characters of the replaced value — stayed on the page under the new one. No failure, no warning.
+- [x] Make the invariant explicit instead of patching a third axis case: **a trim may not lose a glyph of the object being replaced.** The candidate rect is kept only if it still reaches every character of the target, whose boxes come from `get_text("rawdict")`. A neighbour failing that test shares the target's ink, so the rect covers both.
+- [x] Decompose the helper for the round-2 **Finding 2**: CC 11 and nesting 5 became six functions at CC 4/3/4/3/7/5 and nesting 0/1/2/1/2/0, verified with `ruff --select C901`, whose firing was shown at `max-complexity=2` before the `=10` verdict was trusted.
+- [x] Named regression rows for **three** overlap shapes (head, nested, tail) × the same three replacement sizes, plus the assertion set inclusion cannot make: `surviving_fragments`, so a partially surviving value fails. RED with the coverage rule neutralised: **10 failed, 9 passed** (the 9 new rows and the guard), and with the whole fitter neutralised: **16 failed, 3 passed** (the single-object control).
+- [x] **Finding 3** dispositioned, not waived: the fail-loud guard is accepted (fail the document rather than corrupt it), measured as unreachable in 68 real fits, and checked to surface in CLI, MCP, API and batch. **Finding 4** applied: the "old value gone" claim is scoped to the shapes measured.
+- [x] Re-measure the cost of `rawdict`: 40 replacements in 0.137 s against round 1's 0.134 s with `dict`.
+- [x] `make check` **400 passed**, coverage **84.63%**; `ruff` and `mypy --strict` clean.

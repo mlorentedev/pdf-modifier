@@ -110,6 +110,25 @@ def missing_untouched_lines(before: list[str], after: list[str]) -> list[str]:
     return [line for line in before if line != replaced and line not in after]
 
 
+def surviving_fragments(after_text: str, replacement: str, window: int = 2) -> list[str]:
+    """Parts of the replaced value still on the page, after the replacement ran.
+
+    The assertion set inclusion cannot make. A line that survived PARTIALLY is not
+    a missing line, it is an extra one, so `missing_untouched_lines` reports
+    nothing while a piece of the old value sits under the new one -- which is what
+    round 2's Major finding produced (`68D489`).
+
+    Two windows, measured. A 4-character window missed a 3-character tail (`A25`),
+    and a 1-character window flags ordinary digits on the neighbouring lines. The
+    windows the REPLACEMENT also contains are subtracted first: `3C` occurs in both
+    `9F3C1D7A4E620B85` and the value it replaces, so without that subtraction the
+    check reports the fix as a defect.
+    """
+    old = {TARGET[i : i + window] for i in range(len(TARGET) - window + 1)}
+    new = {replacement[i : i + window] for i in range(len(replacement) - window + 1)}
+    return sorted(fragment for fragment in old - new if fragment in after_text)
+
+
 REPLACEMENTS = ("9F3C1D7A4E620B85", "1111111111111111", "ABCD")
 SIZES = ("wider", "narrower", "shorter")
 
@@ -125,6 +144,9 @@ def test_no_untouched_line_is_lost(tmp_path: Path, replacement: str, structure: 
         f"{structure} block dropped {len(missing)} line(s) that were not "
         f"replaced: {missing}"
     )
+    assert not surviving_fragments(
+        "\n".join(after), replacement
+    ), "part of the replaced value is still on the page"
 
 
 @pytest.mark.parametrize("replacement", REPLACEMENTS, ids=SIZES)
@@ -144,13 +166,89 @@ def test_no_untouched_line_is_lost_when_the_target_line_has_two_spans(
         f"the replacement of a {len(TARGET)}-character span on a line drawn as two "
         f"objects dropped {len(missing)} line(s) that were not replaced: {missing}"
     )
+    assert not surviving_fragments(
+        "\n".join(after), replacement
+    ), "part of the replaced value is still on the page"
+
+
+# The overprint shapes round 2 measured. Each one moves the second object to a
+# different part of the target's own run, so each one makes the fitter trim a
+# different edge -- and each one used to leave a different part of the value: the
+# head, a middle piece, or the tail.
+OVERPRINTS = {
+    # characters of the target to skip before the overprint starts, and its text
+    "overlapping-head": (0, "ZZZZZZ"),
+    "nested": (4, "ZZ"),
+    "overlapping-tail": (13, "ZZZZZZ"),
+}
+
+
+def write_overprinted_value(path: Path, *, shape: str) -> None:
+    """A tight three-line block whose target line carries a SECOND object over it.
+
+    A key-value line drawn as two objects and a stamp or an overprinted object are
+    one shape to the redactor: a neighbour box that overlaps the target's own glyph
+    run. The block stays three lines, so a neighbour dropped beside the target is
+    unmistakable.
+    """
+    skip, overprint = OVERPRINTS[shape]
+    label = "AC:  "
+    value_x = 72.0 + fitz.get_text_length(label, fontname="cobo", fontsize=9)
+    char_width = fitz.get_text_length(TARGET, fontname="cobo", fontsize=9) / len(TARGET)
+
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    for y, line in ((72.0, "ARC: 00"), (83.0, label + TARGET), (94.0, "CVM: 5E0000")):
+        if line != label + TARGET:
+            page.insert_text((72.0, y), line, fontname="cobo", fontsize=9)
+            continue
+        page.insert_text((72.0, y), label, fontname="cobo", fontsize=9)
+        page.insert_text((value_x, y), TARGET, fontname="cobo", fontsize=9, color=(0, 0, 1))
+    page.insert_text(
+        (value_x + skip * char_width, 83.0), overprint, fontname="cobo", fontsize=9, color=(1, 0, 0)
+    )
+    doc.save(str(path))
+    doc.close()
+
+
+@pytest.mark.parametrize("shape", sorted(OVERPRINTS))
+@pytest.mark.parametrize("replacement", REPLACEMENTS, ids=SIZES)
+def test_no_untouched_line_is_lost_when_a_neighbour_overlaps_the_target(
+    tmp_path: Path, replacement: str, shape: str
+) -> None:
+    """Round 2's Major finding: the neighbour OVERLAPS the target's own glyph run.
+
+    Trimming x to get past such a neighbour cuts INSIDE the target, and redaction
+    is per character, so the characters left outside the rect survive under the
+    replacement: the replaced value stays visible, and nothing fails. It is not a
+    neighbour to trim against -- it is the same ink, so the rect covers both --
+    and the assertion that catches that is the one set inclusion cannot make: no
+    fragment of the replaced value may remain.
+
+    The overprint itself is expected to go with the target, and asserting it stays
+    would be asserting the defect back: the two objects share the glyph run, so a
+    redaction that reaches one reaches the other. What must not happen is the
+    VALUE outliving its own replacement, which is the line below.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_overprinted_value(src, shape=shape)
+    PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements={TARGET: replacement}))
+    after = read_lines(out)
+
+    dropped = [line for line in ("ARC: 00", "CVM: 5E0000") if line not in after]
+    assert not dropped, f"a line beside an overprinted target was dropped: {dropped}"
+    fragments = surviving_fragments("\n".join(after), replacement)
+    assert not fragments, (
+        f"the replaced value is still on the page in the {shape!r} shape: {fragments} "
+        f"survived the redaction, so the trim cut inside the target's own glyph run"
+    )
 
 
 class _StubPage:
     """A page whose only text object sits where the test needs it.
 
-    The fitter reads the page through `get_text("dict")` alone, so the failing fit
-    can be pinned exactly instead of hoping a real layout collapses.
+    The fitter reads the page through `get_text("rawdict")` alone, so the failing
+    fit can be pinned exactly instead of hoping a real layout collapses.
     """
 
     number = 0

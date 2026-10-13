@@ -158,7 +158,116 @@ The first attempt at this **appeared to pass and proved nothing**: the reproduct
 ARC: present   CVM: present   new value: present   old value: absent   lines: 135
 ```
 
-The document stays outside the repository; the fixture in the test is synthetic and reproduces the same shape.
+The document stays outside the repository; the fixture in the test is synthetic and reproduces the same shape. **Scope of that "old value: absent" line, narrowed after round 2:** it holds on the shapes measured here, and round 2 found one where it does not hold — a neighbour overlapping the target's own glyph run, which left part of the value on the page (round 3 above). It is a claim about this document's shape, not about the class; the class is now carried by the per-shape rows and the residue assertion in the test file.
+
+## Round 3 — the review's Major finding, reproduced and closed
+
+Round 2 (`nan/deepseek-v4-flash`) also returned **FAIL**, with one REAL Major: a same-band neighbour that **overlaps the target's own glyph run** (an overprint, a stamp, any doubled text object) was classified as "beside" the target, so the x-trim cut **inside** the target. Redaction is per character, so the characters left outside the rect survived *under* the replacement: the old value stayed partly visible, and nothing failed.
+
+### The finding, reproduced here first
+
+Same tight block, the value drawn together with a second object over its first six characters:
+
+```
+  span 'ARC: 00'            bbox=(72.0, 62.9, 109.8, 75.5)
+  span '68D489883C5B7A25'   bbox=(72.0, 73.9, 158.4, 86.5)   <- the target
+  span 'ZZZZZZ'             bbox=(72.0, 73.9, 104.4, 86.5)   <- overlapping, x1 < centre
+  span 'CVM: 5E0000'        bbox=(72.0, 84.9, 131.4, 97.5)
+
+BEFORE: ['ARC: 00', '68D489883C5B7A25', 'ZZZZZZ', 'CVM: 5E0000']
+AFTER : ['ARC: 00', '68D489', 'ZZZZZZ', 'CVM: 5E0000', '9F3C1D7A4E620B85']
+```
+
+`68D489` — the first six characters of the replaced value — is still on the page, with the new value drawn after it. The reviewer's two fixtures and this one agree.
+
+### The rule that closes it
+
+The invariant the axis-only rule was missing: **a trim may not lose a glyph of the object being replaced.** `apply_redactions` removes a character only if the rect reaches it, so a candidate rect is kept only if it still reaches every character of the target. The target is the span holding the rect's centre, and its characters come from `get_text("rawdict")` — the question is put to the document instead of to a heuristic about two bounding boxes, which is where rounds 1 and 2 both went wrong.
+
+A neighbour that would fail that test is not a neighbour to trim against: it shares the target's own ink, so the rect covers both and the untrimmed rectangle is kept. That is the reviewer's own recommendation ("classify a neighbour that materially overlaps the target span as part of the object being replaced"), decided per character rather than by a threshold.
+
+```
+$ uv run python /tmp/repro_overprint.py      # the overlap shape above
+AFTER : ['ARC: 00', 'CVM: 5E0000', '9F3C1D7A4E620B85']
+```
+
+The value is gone and both neighbouring lines survive. The overlapping object goes with the target — asserting that *it* survives would assert the defect back, since a redaction that reaches one of two objects sharing a glyph run reaches the other.
+
+### RED, with the coverage rule neutralised (the precise one)
+
+Neutralisation: `_is_safe_trim` returns `candidate.get_area() > 0`, so the axis rule stays and only the new glyph-coverage rule is removed.
+
+```
+$ uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov
+10 failed, 9 passed
+```
+
+The 10 failures are the 9 overlapping-neighbour rows plus the guard's test; the 6 original rows and the 3 two-span rows stay green, so the coverage rule is pinned by exactly the shape it was written for. Each overlap shape leaves a different piece of the value:
+
+```
+'nested'           -> ['48', '68', '89', '8D', 'D4'] survived
+'overlapping-head' -> ['48', '68', '89', '8D', 'D4'] survived
+'overlapping-tail' -> ['25', 'A2'] survived
+```
+
+### RED, with the whole fitter neutralised
+
+```
+$ uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov
+16 failed, 3 passed
+```
+
+The 3 that pass are the three `single-object` rows: the structure that never had the defect. Same shape as round 1's RED, on a fixture set three times larger.
+
+### GREEN
+
+```
+$ uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov
+19 passed
+
+$ uv run pytest tests/unit/core -q --no-cov
+196 passed, 11 skipped
+
+$ make check
+400 passed, 19 skipped, coverage 84.63%   ruff clean, mypy --strict clean
+```
+
+### Finding 2 (complexity) — applied, not waived
+
+The same round measured the fitter at **CC ≈ 11 and nesting depth 5**, above the repo's thresholds (`< 10`, `< 4`). The rewrite decomposes it into six functions with one job each:
+
+```
+_text_spans                             CC=4   nesting=0  code_lines=4
+_glyph_boxes                            CC=3   nesting=1  code_lines=3
+_trim_away_from                         CC=4   nesting=2  code_lines=11
+_is_safe_trim                           CC=3   nesting=1  code_lines=3
+_fit_redaction_to_its_own_text_object   CC=7   nesting=2  code_lines=17
+_refuse_collapsed_fit                   CC=5   nesting=0  code_lines=10
+```
+
+Checked with the repo's own tool, and the tool was shown to fire before its verdict was trusted:
+
+```
+$ uv run ruff check --select C901 --config "lint.mccabe.max-complexity=10" src/pdf_modifier/core/modifier.py
+All checks passed!
+
+$ uv run ruff check --select C901 --config "lint.mccabe.max-complexity=2" src/pdf_modifier/core/modifier.py
+Found 17 errors.        <- the rule is running; at 10 nothing is over
+```
+
+### Finding 3 (fail-loud guard) — accepted, disclosed, and checked in the layers
+
+A collapsed fit raises `PDFModifierError`, which `process` re-raises: one unfit rect fails the whole conversion rather than producing a partly-corrupt file. **This is the intended behaviour and it is accepted, not waived** (lesson-023: a guard must never fall back to the value from before the fix). It is bounded by measurement rather than by hope: the collapse branch was reached **0 times in 68 fits** across the suite before it was made loud, and the only synthetic case that reaches it is the guard's own test.
+
+Surfaced to the user, not swallowed: `interfaces/cli.py`, `interfaces/mcp.py` and `web/routes/pdf.py` all catch `PDFModifierError` and report it (the API as a 400 with the message), and `batch_process` records it per file so one unfit document does not stop a batch. The failure needs no new exception type, which is why the layers needed no edit.
+
+### Finding 4 (claim broader than its fixtures) — applied above
+
+"Old value gone" is now scoped to the shapes measured, and the missing assertion is in the test file: `surviving_fragments` checks that no fragment of the replaced value remains, at a 2-character window after the measurement that a 4-character window missed a 3-character tail and a 1-character window flags ordinary digits.
+
+### One more defect the new check found in itself
+
+The first version of the residue assertion reported the fix as broken: `3C` occurs in both the old value and `9F3C1D7A4E620B85`, so a window shared with the replacement reads as residue. The subtraction of the replacement's own windows is that fix, and it is why the check is described here rather than just trusted.
 
 ## ADR-014 conditions
 
