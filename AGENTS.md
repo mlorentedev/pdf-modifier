@@ -112,9 +112,9 @@ Run `make help` for the authoritative list.
 
 | Task | Model | Why |
 |---|---|---|
-| Vision / OCR | mimo-v2.5 | Only multimodal model |
-| Tool calling | mimo-v2.5 | Native function calling |
-| Reasoning | mimo-v2.5 | Reasoning mode, 1M context |
+| Vision / OCR | mimo-v2.6-flash | Only multimodal model |
+| Tool calling | mimo-v2.6-flash | Native function calling |
+| Reasoning | mimo-v2.6-flash | Reasoning mode, 1M context |
 | Classification | qwen3.6 | Fast, cheap |
 | Translation | qwen3.6 | Fast, 256K context |
 | Summary | qwen3.6 | Fast |
@@ -126,7 +126,7 @@ Run `make help` for the authoritative list.
 ### Fallback Chain
 
 ```
-mimo-v2.5 → qwen3.6 → gemma4
+mimo-v2.6-flash → qwen3.6 → gemma4
 ```
 
 Fallback on: 429, 404, 5xx. Fail fast on: 400, 401.

@@ -64,7 +64,7 @@ class AIReviewer:
 
     ``client`` may be injected (e.g. ``NullAIClient`` for tests). By default it
     builds a ``NaNClient``, which reads ``NAN_API_KEY`` / ``NAN_BASE_URL`` from the
-    environment. The model defaults to the ``REVIEW`` routing (``mimo-v2.5``) and
+    environment. The model defaults to the ``REVIEW`` routing (``mimo-v2.6-flash``) and
     can be overridden via ``AI_REVIEW_MODEL``.
     """
 
@@ -76,7 +76,7 @@ class AIReviewer:
     def _default_model() -> str:
         """Pick a sensible default model per provider (overridable via AI_REVIEW_MODEL)."""
         if os.environ.get("NAN_API_KEY"):
-            return ModelRouter().get_model(TaskType.REVIEW)  # mimo-v2.5
+            return ModelRouter().get_model(TaskType.REVIEW)  # mimo-v2.6-flash
         if os.environ.get("OPENAI_API_KEY"):
             return "gpt-4o-mini"
         return ModelRouter().get_model(TaskType.REVIEW)

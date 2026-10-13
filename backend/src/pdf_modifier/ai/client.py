@@ -23,7 +23,8 @@ class NaNClient:
 
     Example:
         >>> async with NaNClient() as client:
-        ...     result = await client.chat("mimo-v2.5", [{"role": "user", "content": "Hello"}])
+        ...     msgs = [{"role": "user", "content": "Hello"}]
+        ...     result = await client.chat("mimo-v2.6-flash", msgs)
     """
 
     def __init__(
