@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.9.2](https://github.com/mlorentedev/pdf-modifier/compare/v1.9.1...v1.9.2) (2026-10-13)
+
+
+### Bug Fixes
+
+* **core:** a replacement must not drop the lines that follow it (CORE-001) ([#186](https://github.com/mlorentedev/pdf-modifier/issues/186)) ([ae28471](https://github.com/mlorentedev/pdf-modifier/commit/ae2847192a3303f2d8f16de14798936f026df8f6))
+* **release:** bump the package version in server.json and guard the whole class ([#184](https://github.com/mlorentedev/pdf-modifier/issues/184)) ([53a6974](https://github.com/mlorentedev/pdf-modifier/commit/53a697441c2e7f5236ff0ec0d481808d89c62d7a))
+
 ## [1.9.1](https://github.com/mlorentedev/pdf-modifier-mcp/compare/v1.9.0...v1.9.1) (2026-10-13)
 
 
