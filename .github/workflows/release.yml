@@ -218,4 +218,25 @@ jobs:
 
       - name: Publish to MCP Registry
         working-directory: backend
-        run: ../mcp-publisher publish
+        run: |
+          # `mcp-publisher publish` asks the registry to validate the version against
+          # PyPI, and PyPI's index can lag a finished upload by seconds. On v1.9.2 this
+          # step started 7 s after `publish-pypi` completed and got a 404; the same job
+          # passed on a re-run a minute later. The ordering is already explicit
+          # (`needs: [release-please, publish-pypi]`), so the wait belongs here: retry the
+          # validation race instead of losing the release to it. A publish that already
+          # succeeded is not repeated -- the loop exits on the first success.
+          for attempt in 1 2 3 4 5; do
+            if ../mcp-publisher publish; then
+              exit 0
+            fi
+            # No sleep after the last attempt: nothing follows it, and it made the
+            # failure step wait 225 s instead of 150 s (CodeRabbit on #192).
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 15))
+              echo "::warning::publish attempt ${attempt} failed; retrying in ${delay}s"
+              sleep "$delay"
+            fi
+          done
+          echo "::error::publish to the MCP registry failed after 5 attempts"
+          exit 1
