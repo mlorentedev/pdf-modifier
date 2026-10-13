@@ -34,9 +34,9 @@ Each acceptance criterion from `proposal.md`, with the proof produced in this se
 
 ## Test status
 
-- `uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov` -> **43 passed**
+- `uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov` -> **46 passed**
 - `uv run pytest tests/unit/core -q --no-cov` -> **219 passed, 11 skipped**
-- `make check` -> **424 passed, 19 skipped, coverage 85.31 %**, `ruff check` and `mypy --strict` clean (the coverage figure was 85.27 % before the multi-page row below; a first review measured 85.31 % and was right)
+- `make check` -> **427 passed, 19 skipped**, `ruff check` and `mypy --strict` clean (the coverage figure was 85.27 % before the multi-page row below; a first review measured 85.31 % and was right)
 - `ruff format --check …modifier.py …test_replacement_preserves_following_lines.py` -> clean, under BOTH the venv's ruff and the pinned hook (the two disagree elsewhere in the repository: CI-004, `#203`)
 - No regressions: the pre-existing rows were not modified; the only edits to existing code are `missing_untouched_lines` gaining an optional `replaced` argument (see below, where its absence caused a false RED) and `_apply_replacements_to_page` gaining the before/after capture.
 
@@ -61,7 +61,7 @@ Each row neutralises one thing and counts the tests that notice. Run by a first 
 
 | # | Mutation | Rows red | What it shows |
 |---|---|---|---|
-| M1 | `_check_no_other_object_lost_characters` -> immediate `return` | **7** | The consequence check is load-bearing: three sweep rows, the 0.60 em row, the planted-loss row, the warning row and the page-naming row all go red. It is not decoration beside the fitter. Six at `4b5d9b4`; a second review measured seven at `47a9ca0`, when the page-naming row existed, and re-running here confirms the larger count is the current one. |
+| M1 | `_check_no_other_object_lost_characters` -> immediate `return` | **7** (8 after the two-replacement row; see the second-round matrix) | The consequence check is load-bearing: three sweep rows, the 0.60 em row, the planted-loss row, the warning row and the page-naming row all go red. It is not decoration beside the fitter. Six at `4b5d9b4`; a second review measured seven at `47a9ca0`, when the page-naming row existed, and re-running here confirms the larger count is the current one. |
 | M2 | `_refuse_trim_that_drops_another_line` -> no-op | **2** | CORE-001's refusal guard is pinned by both params of `test_a_tight_block_is_refused_rather_than_losing_the_line_below`. |
 | M3 | `_same_line` threshold 0.9 -> 0.5 | **4** | The 90 % band is pinned, including by the 0.60 em row. |
 | M4 | `_same_line` -> `False` (never accept) | **18** | The accept-list is what keeps documents converting: refusing every co-located loss fails 18 rows. This is the cost of getting the boundary wrong in the strict direction. |
@@ -80,6 +80,38 @@ This branch carries two specs. `git log 01624dee..HEAD -- backend/src/pdf_modifi
 ## The guard's visibility ends at glyphs
 
 `apply_redactions(images=PDF_REDACT_IMAGE_NONE)` keeps the default `graphics` behaviour, so a redaction can still cost **line art** (a rule, a border, a chart line) and this check cannot see it: it compares text, and text is what it promises. That is a declared limit, not an oversight -- `proposal.md` scopes to text objects -- but it belongs in writing rather than in the reader's inference. Filed with the other visibility questions in `#202`'s neighbourhood, not fixed here.
+
+## The second signature's REAL Major, and what fixing it uncovered
+
+The second signer (`anthropic-review/claude-sonnet-5-5`) FAILED this spec with one REAL Major and three Minors. The Major was real, reproduced, and fixed here.
+
+**The finding.** The co-located exemption asked whether *any* target on the page shares the lost object's line (`any(_same_line(target, box) for _, target in redactions)`) instead of whether the rectangle that TOOK the glyph belongs to a target on that line. So an unrelated replacement elsewhere on the lost line downgraded a refusal to a warning -- and the warning then said "its ink is drawn in the same place" about an object sharing ink with nothing.
+
+**Reproduced exactly** (`LOST_LINE_TARGET` at 72, `LOST_LINE_NEIGHBOUR` at 72 on the next line, `LOST_LINE_BYSTANDER` at 250 on the neighbour's line, Helvetica 12 pt at 7.2 pt = 0.6 em leading):
+
+```
+replace {VALTHREE: X}              -> REFUSED  would lose 8 character(s) of another text object at (72.0, 66.3, 136.0, 82.8)
+replace {VALTHREE: X, VALFOUR: Y}  -> CONVERTED ['X', 'Y'], warnings=['page 1: 8 character(s) ... because its ink is drawn in the same place']
+```
+
+`KEEPKEEP` is gone from the second output and the warning blames co-location. Two replacements on one page is the normal case; the one-replacement fixtures could not see it.
+
+**The fix.** `_lost_characters` now returns the glyphs' KEYS, so the check knows where each vanished character was drawn; `_co_located_redaction_took` accepts a loss only when a rectangle that **removes** that glyph has a target on the lost object's line; and `_dispose_of_lost_characters` requires **every** lost character to be accounted for that way, so an object cannot be half-excused through the middle of the span. New row: `test_a_second_replacement_on_the_lost_line_does_not_excuse_the_loss` (RED first: `DID NOT RAISE`).
+
+**Fixing it uncovered a second defect, in the predicate.** Attribution first used `_reaches_glyph`, which is the TRIM's safety predicate (the measured 10.0% transition plus a margin, `GLYPH_COVERAGE_FLOOR = 0.12`). Attribution asks what the redactor DID, and the redactor's own rule is the measured fraction with no margin. Asking the trim's question refused `backend/tests/data/sample.pdf` page 1 -- caught by the integration suite (`test_regex_replacement`), not by any unit row. Two constants now exist, each with the question it answers: `GLYPH_REMOVAL_FRACTION` (0.10, measured) for what happened, `GLYPH_COVERAGE_FLOOR` (0.12) for what is safe.
+
+**And a third: a rewrite drops what no rectangle reached.** With attribution fixed, the same document still refused -- for a **space**. Inspected: the lone whitespace-only span between `Visa` and `ending in 3777` disappears when PyMuPDF rewrites the line it touches, with a **zero-width overlap against every rectangle on the page**. `_lost_characters` therefore does not count whitespace: the promise is that *content* does not vanish, and refusing a convertible document over a space is not a refusal the user can act on. Both directions are pinned (`test_a_vanished_space_is_not_a_lost_character`, `test_a_vanished_letter_is_a_lost_character`).
+
+## Mutation matrix, second round
+
+Added to the M1-M7 above, all measured on the code this revision ships. The tree was restored after each.
+
+| # | Mutation | Rows red | What it shows |
+|---|---|---|---|
+| M1 | the check -> immediate `return` | **8** | Was 7; the new two-replacement row goes red too. |
+| M8 | drop "this rectangle REMOVES the glyph" (the bug the second signer found) | **1** | Exactly and only `test_a_second_replacement_on_the_lost_line_does_not_excuse_the_loss` -- the row is aimed at the defect, and no other row pretends to cover it. |
+| M9 | drop "the rectangle's target is on the lost line" | **7** | The other half of the attribution is pinned by the sweep, the planted loss and the page-naming rows. |
+| M10 | count whitespace again | **1** | Only the whitespace row sees it, in the direction that matters: a dropped space must not refuse a document. |
 
 ## Checkbox and evidence drift, and why it needed no re-review
 
@@ -105,7 +137,7 @@ Not fixed here, deliberately: deciding unavoidability per glyph is a new predict
 
 ## Promotion candidates
 
-- [x] Lesson for the repo's `docs/lessons/`? yes: `docs/lessons/lesson-028-a-guard-you-cannot-check-is-a-guard-you-cannot-trust.md`
+- [x] Lesson for the repo's `docs/lessons/`? yes, two: `docs/lessons/lesson-028-a-guard-you-cannot-check-is-a-guard-you-cannot-trust.md` and `docs/lessons/lesson-029-attribute-a-loss-to-the-thing-that-caused-it.md` (the second from the second signature's Major).
 - [x] ADR-worthy decision for `docs/adr/`? yes: `docs/adr/adr-015-refuse-rather-than-lose.md` — the policy this spec implements (loud refusal over silent loss; the accepted co-located case reported rather than silent) constrains every future change to the fitter, so it is recorded as a decision with the trade-off and the rejected alternatives, not as a property of one file.
 - [x] New pattern candidate for `00_meta/patterns/`? no: the transferable half is the lesson above. The geometry, the tooling and the fixture shapes are repository-specific, and the pattern catalogue already carries the general form under the verification patterns.
 

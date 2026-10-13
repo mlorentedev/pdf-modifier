@@ -762,3 +762,100 @@ def test_the_refusal_names_the_page_that_holds_the_loss(tmp_path: Path) -> None:
     assert named == 3, f"the refusal named page {named}, and the loss is on page 3"
     assert "page 3" in str(raised.value), f"the message must say which page: {raised.value}"
     assert not out.exists(), "a refused conversion must not leave a half-written document"
+
+
+# The three values the second signer's reproduction is built from: a target, the
+# neighbour it drops on the next line at 0.6 em leading, and an unrelated value far
+# to the right ON the neighbour's own line.
+LOST_LINE_TARGET = "VALTHREE"
+LOST_LINE_NEIGHBOUR = "KEEPKEEP"
+LOST_LINE_BYSTANDER = "VALFOUR"
+
+
+def write_a_line_lost_next_to_an_unrelated_bystander(path: Path) -> None:
+    """A target whose neighbour below is on the same line as an unrelated value.
+
+    Helvetica at 12 pt with 7.2 pt leading, which is 0.6 em: the neighbour's box
+    overlaps the target's, so every rectangle that covers the target reaches the
+    neighbour. The bystander shares the neighbour's LINE and none of its ink.
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 72), LOST_LINE_TARGET, fontname="helv", fontsize=12)
+    page.insert_text((72, 79.2), LOST_LINE_NEIGHBOUR, fontname="helv", fontsize=12)
+    page.insert_text((250, 79.2), LOST_LINE_BYSTANDER, fontname="helv", fontsize=12)
+    doc.save(str(path))
+    doc.close()
+
+
+def test_a_second_replacement_on_the_lost_line_does_not_excuse_the_loss(
+    tmp_path: Path,
+) -> None:
+    """A loss is accepted only from the rectangle that TOOK it.
+
+    The co-located exemption asked whether ANY target on the page shares the lost
+    object's line, so an unrelated replacement elsewhere on that line turned a
+    refusal into a warning -- one saying "its ink is drawn in the same place" about an
+    object that shares ink with nothing. Reproduced by the second signer: replacing
+    the target alone REFUSES, and adding a value drawn on the neighbour's line
+    CONVERTS, loses the neighbour (the output is just `X`, `Y`) and reports it as
+    accepted. Two replacements on one page is the normal case, not an edge case, so
+    the verdict must not depend on the second one.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_a_line_lost_next_to_an_unrelated_bystander(src)
+    alone = {LOST_LINE_TARGET: "X"}
+    with_bystander = {LOST_LINE_TARGET: "X", LOST_LINE_BYSTANDER: "Y"}
+
+    with pytest.raises(PDFModifierError) as refused_alone:
+        PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements=alone))
+
+    with pytest.raises(PDFModifierError) as refused_with_bystander:
+        PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements=with_bystander))
+
+    assert "another text object" in str(refused_alone.value)
+    assert "another text object" in str(refused_with_bystander.value), (
+        "a replacement on the lost line must not excuse the loss, and this said: "
+        f"{refused_with_bystander.value}"
+    )
+    assert not out.exists(), "a refused conversion must not leave a half-written document"
+
+
+def _text_span(text: str, x: float, y: float) -> dict:
+    """One rawdict-shaped span: a glyph per character, left to right, 6 pt wide."""
+    chars = [
+        {"c": character, "bbox": (x + index * 6.0, y - 8.0, x + index * 6.0 + 6.0, y)}
+        for index, character in enumerate(text)
+    ]
+    return {"bbox": (x, y - 8.0, x + len(text) * 6.0, y), "chars": chars}
+
+
+def test_a_vanished_space_is_not_a_lost_character() -> None:
+    """The whitespace rule, and the document it was measured on.
+
+    A redaction rewrites the line it touches, and while rewriting it PyMuPDF drops
+    an adjacent whitespace-only span even though no rectangle reaches it: on
+    `tests/data/sample.pdf` the space between `Visa` and `ending in 3777` goes that
+    way, with a zero-width overlap against every rectangle on the page. Counting it
+    refused a document that had converted, over a character that carries no text.
+    """
+    before = [_text_span("Visa", 72.0, 72.0), _text_span(" ", 90.4, 72.0)]
+    after = [_text_span("Visa", 72.0, 72.0)]
+
+    assert PDFModifier._lost_characters(before, after) == {}
+
+
+def test_a_vanished_letter_is_a_lost_character() -> None:
+    """The other direction: the whitespace rule must not swallow content.
+
+    The character is removed from the span it was drawn in rather than the text
+    being rebuilt from scratch -- a shorter string left-aligned moves every glyph
+    after it, and the check would then read the whole tail as lost.
+    """
+    before = [_text_span("Visa", 72.0, 72.0)]
+    after = [_text_span("Visa", 72.0, 72.0)]
+    del after[0]["chars"][-1]
+
+    lost = PDFModifier._lost_characters(before, after)
+
+    assert ["".join(key[0] for key in keys) for keys in lost.values()] == ["a"]

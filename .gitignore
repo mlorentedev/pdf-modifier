@@ -60,6 +60,17 @@ backend/tests/examples_output/
 site/node_modules/
 site/dist/
 site/.astro/
+# Review run state: megabytes of transcript per round, written by `dotf spec
+# review`, never part of a spec's contract. Ignored for ACTIVE specs too, not only
+# archived ones -- the archive rules below were the only ones here, and a directory
+# add silently staged 2.5 MB of it twice in one session.
+#
+# `review-request.json` is deliberately NOT ignored while a spec is active:
+# `dotf spec review` refuses to launch when git ignores it, because `spec archive`
+# reads the contract digests it records and that evidence has to exist in any
+# other checkout. The archive rules below cover the copies that outlive a spec.
+specs/*/review-transcript.jsonl
+specs/*/review-transcript.jsonl.stderr
 specs/archive/*/review-transcript.jsonl
 specs/archive/*/review-request.json
 specs/archive/*/review-transcript.jsonl.stderr
