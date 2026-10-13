@@ -1,6 +1,6 @@
 [project]
 name = "pdf-modifier"
-version = "1.9.0"
+version = "1.9.1"
 description = "PDF modification tool with CLI and MCP interfaces for AI agents."
 authors = [{name = "Manu", email = "mlorentedev@gmail.com"}]
 readme = "README.md"

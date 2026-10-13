@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.9.1](https://github.com/mlorentedev/pdf-modifier-mcp/compare/v1.9.0...v1.9.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **ai:** route to mimo-v2.6-flash, the successor to the retired mimo-v2.5 ([#178](https://github.com/mlorentedev/pdf-modifier-mcp/issues/178)) ([f3e1ad8](https://github.com/mlorentedev/pdf-modifier-mcp/commit/f3e1ad883e57a3259a59382efbb6280dcc9eb0d6))
+* **harness:** port the reviewer pool and attestation to the SSOT shape (CI-001) ([#175](https://github.com/mlorentedev/pdf-modifier-mcp/issues/175)) ([b7291a1](https://github.com/mlorentedev/pdf-modifier-mcp/commit/b7291a1407b15a4a2d29b19f3ca897a55766d8b5))
+
 ## [1.9.0](https://github.com/mlorentedev/pdf-modifier-mcp/compare/v1.8.0...v1.9.0) (2026-09-22)
 
 
