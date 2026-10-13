@@ -18,7 +18,7 @@
     "behavior": "No fragment of the replaced value is left on the page -- asserted on every row twice: as a two-character text window, and at the level of the output's own text objects, because a ONE-character residue (round 3's Finding 1) is invisible to the window and to line-level inclusion. Set inclusion cannot see a line that survived PARTIALLY: that is an extra line, not a missing one.",
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 24 passed in the file. RED with the coverage rule neutralised alone: 10 failed (the 9 overlap rows + the guard), everything else green."
+    "evidence": "passed: 28 passed in the file. RED with the coverage rule neutralised alone: 10 failed (the 9 overlap rows + the guard), everything else green."
   },
   {
     "id": "CORE-001-f4",
@@ -32,14 +32,14 @@
     "behavior": "A redaction rectangle that cannot be fitted to the text object being replaced is REPORTED. It is never silently swapped for the raw, unfitted rectangle -- that fall-through was the mechanism of the round-1 Blocker -- and never silently degenerated, because a 0.02 pt rect removes no glyph at all. Accepted as a document-level failure: refusing beats corrupting.",
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_collapsing_fit_raises_instead_of_redacting_the_raw_rect -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 1 passed. Reachability measured by backend/scripts/probe_fitter_reachability.py over the whole suite: 121 fits, 1 collapse, and it is this row's own stub page."
+    "evidence": "passed: 1 passed. Reachability measured by backend/scripts/probe_fitter_reachability.py over the whole suite: 125 fits, 1 collapse, and it is this row's own stub page."
   },
   {
     "id": "CORE-001-f6",
     "behavior": "AC5: the existing suite passes unchanged -- this repairs a defect, it does not change intended behaviour. No pre-existing test is modified or deleted; the diff adds the one regression file.",
     "verification": "cd backend && uv run pytest -q --no-cov",
     "state": "verified",
-    "evidence": "passed: 405 passed, 19 skipped; `make check` green, coverage 84.70%, ruff and mypy --strict clean."
+    "evidence": "passed: 409 passed, 19 skipped; `make check` green, coverage 84.88%, ruff and mypy --strict clean."
   },
   {
     "id": "CORE-001-f7",
@@ -54,5 +54,19 @@
     "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_target_that_cannot_be_identified_is_refused_not_trimmed_unguarded -q --no-cov",
     "state": "verified",
     "evidence": "passed: 1 passed. RED with the refusal neutralised: 1 failed. No real document reaches the branch (probe_fitter_reachability.py: 1 unidentified in 121 fits, this row's stub page)."
+  },
+  {
+    "id": "CORE-001-f9",
+    "behavior": "A block whose leading is tighter than its glyph height is REFUSED rather than converted with a line lost. No rectangle both covers the target and spares the line below it, so the fit raises PDFModifierError naming the page, the target's rect and the neighbouring line -- instead of keeping the rectangle and quietly removing that line's characters, which is the defect this spec exists to close. Found by the second signer, not the first: at 12 pt on 9 pt leading the previous revision turned keepkeep4 into p4.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_tight_block_is_refused_rather_than_losing_the_line_below -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 2 passed (12pt-on9pt, 9pt-on7pt). RED with the refusal neutralised: 2 failed / 26 passed, and the silent output is ['keepkeep0','keepkeep1','keepkeep2','p4',...]."
+  },
+  {
+    "id": "CORE-001-f10",
+    "behavior": "A merely tight block is still CONVERTED, with every neighbouring line intact: the coverage floor is the redactor's measured threshold (10.0% of the box, both axes, constant across 6/9/12/18/24 pt) plus a small margin, not an arbitrary stricter value. This is the other side of refusing: an over-strict floor is not free, it refuses trims that would have been safe and turns a convertible document into a refusal.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_slightly_tight_block_is_still_fitted_without_losing_anything -q --no-cov",
+    "state": "verified",
+    "evidence": "passed: 2 passed (10pt-on8pt, 12pt-on10pt). RED with the floor restored to 0.15: 1 failed (10pt-on8pt), which is the boundary pinned from above."
   }
 ]

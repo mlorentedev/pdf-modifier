@@ -257,7 +257,7 @@ Found 17 errors.        <- the rule is running; at 10 nothing is over
 
 ### Finding 3 (fail-loud guard) — accepted, disclosed, and checked in the layers
 
-A collapsed fit raises `PDFModifierError`, which `process` re-raises: one unfit rect fails the whole conversion rather than producing a partly-corrupt file. **This is the intended behaviour and it is accepted, not waived** (lesson-023: a guard must never fall back to the value from before the fix). It is bounded by measurement rather than by hope: instrumenting the fitter across the whole suite — `backend/scripts/probe_fitter_reachability.py`, which prints the count on exit — gives **121 fits, 1 collapse and 1 unidentified target, both of them from the guard's own stub-page rows and none from a real document**. (Round 3 measured 0 collapses in 68 fits, on a smaller suite.) The only fit that reaches the collapse branch is the test that exists to reach it.
+A collapsed fit raises `PDFModifierError`, which `process` re-raises: one unfit rect fails the whole conversion rather than producing a partly-corrupt file. **This is the intended behaviour and it is accepted, not waived** (lesson-023: a guard must never fall back to the value from before the fix). It is bounded by measurement rather than by hope: instrumenting the fitter across the whole suite — `backend/scripts/probe_fitter_reachability.py`, which prints the count on exit — gives **125 fits, 15 refused trims, 1 collapse and 1 unidentified target, the last two both from the guard's own stub-page rows and none from a real document**. (Round 3 measured 0 collapses in 68 fits, on a smaller suite; the round-4 count was 121 fits and no refused-trim counter, which is the blind spot round 5's second signer named — the one refusal that cost content was invisible.) The only fit that reaches the collapse branch is the test that exists to reach it.
 
 Surfaced to the user, not swallowed: `interfaces/cli.py`, `interfaces/mcp.py` and `web/routes/pdf.py` all catch `PDFModifierError` and report it (the API as a 400 with the message), and `batch_process` records it per file so one unfit document does not stop a batch. The failure needs no new exception type, which is why the layers needed no edit.
 
@@ -285,7 +285,7 @@ Round 3 (`nan/deepseek-v4-flash`) also returned **FAIL**, with two REAL Majors a
   fontsize=24.0  char width= 14.40  removal threshold=1.440 pt  (10.0% of the char width)
 ```
 
-So a rectangle reaching a glyph by a 7% sliver passed the check and the glyph stayed on the page. `GLYPH_COVERAGE_FLOOR = 0.15` is the rule now, above the measured 10% and above that sliver: a check stricter than the redactor costs a refused trim, and a refused trim only leaves the rectangle where it was.
+So a rectangle reaching a glyph by a 7% sliver passed the check and the glyph stayed on the page. The floor was set to 0.15 at the time, above the measured 10% and above that sliver. **The justification written with it was wrong**, and round 5's second signature is the reason it is corrected here: "a check stricter than the redactor costs a refused trim, and a refused trim only leaves the rectangle where it was" reads as harmless, and leaving the rectangle where it was is *the defect this file exists to fix*. A refused trim is the trim that keeps the rectangle off the neighbouring lines. The floor is now **0.12** — the measured transition on both axes plus a small margin — and a refusal that would cost another line its characters raises instead of proceeding.
 
 ### Major A: one character of the replaced value survived (Finding 1)
 
@@ -320,7 +320,7 @@ after : 'AC'                                    <- 'COUNT:' was inside the targe
 
 ### Minor B: an unidentified object was a licence to trim (Finding 4)
 
-`_glyph_boxes(None)` is `[]` and `all()` over an empty list is `True`, so a target that could not be identified made every trim "safe" and rounds 1-2's misclassification would have returned silently. It is a refusal now, with its own stub-page row, on the same principle as the empty rectangle. Reachability, from `backend/scripts/probe_fitter_reachability.py`: **121 fits in the suite, 1 with an unidentified target, and it is this row's own stub page** — no real document reaches the branch.
+`_glyph_boxes(None)` is `[]` and `all()` over an empty list is `True`, so a target that could not be identified made every trim "safe" and rounds 1-2's misclassification would have returned silently. It is a refusal now, with its own stub-page row, on the same principle as the empty rectangle. Reachability, from `backend/scripts/probe_fitter_reachability.py`: **125 fits in the suite, 1 with an unidentified target, and it is this row's own stub page** — no real document reaches the branch.
 
 ### Minor C: the layer-surfacing claim, cited (Finding 5)
 
@@ -354,6 +354,87 @@ $ make check
 ### Performance, including what round 3 measured
 
 `_text_spans` parses the page once per rectangle, so a page with N replacements does N parses. Round 3 measured 60 replacements on a dense page in **0.279 s**; this session measured 40 on a lighter page in **0.137 s**. Same order, and now recorded: it is the price of asking the document which characters are there, instead of inferring them from two bounding boxes.
+
+## Round 5 — the round-4 verdict, and what it left
+
+Round 4 (`nan/glm5.3-flash`, drawn from the pool) returned **PASS** against `a479628`. It is the first round that did not fail, and it is worth recording *how* it checked rather than only that it passed: the reviewer re-ran the whole RED matrix itself — applying each mutation, restoring the tree, and checking `git status` — and got exactly the recorded numbers (`intersects` → 3 failed / 21 passed, the three sliver rows; refusal neutralised → 1 failed; whole fitter neutralised → 21 failed / 3 passed), re-ran `make check` (405 passed, 84.70%), and re-ran the reachability probe with the invocation the script's docstring prescribes.
+
+It left two THEORETICAL minors found by reading rather than by a failing fixture, and one note about how to read a future mutation run:
+
+| Finding | Disposition | Where |
+|---|---|---|
+| The 15% floor is applied to the glyph's **height** as well, and only the **width** transition was measured (10.0%, five sizes). Argued from the code, not reproduced: a height-only refusal does not appear in the suite. | **Ticketed** | CORE-004 (`#201`): bisect the height transition the way the width one was bisected, then set the constant from the measurement or say why one covers both. |
+| Target identification takes the **first** span whose bbox holds the rect's centre, so with two containing spans (a stamp over the value) rawdict order decides whose glyphs are protected. Argued, not reproduced. | **Ticketed** | CORE-004 (`#201`): prefer the span whose bbox best matches the rect, with a stub-page row for the two-candidate case. |
+| The overprint rows are insensitive to weakening the floor *below* `intersects` (13 rows fail at floor 0.0, 3 at the `intersects` baseline) — protection comes from `_is_safe_trim`'s empty-candidate path below that line. A mutation run reading the 3-row delta as the floor's total coverage would under-credit it. | **Recorded** | CORE-004 (`#201`), under "Note for mutation testing", so the recipe can carry it. |
+| The accepted shared-ink deletion (a label losing the characters the rectangle covers) stands as dispositioned in round 3. | **Already tracked** | CORE-003 (`#199`), pinned by `test_a_label_sharing_the_target_ink_loses_exactly_the_shared_characters`. |
+
+No finding was declined. `proposal.md` declares `risk: high`, so the archive gate requires a second signature from another vendor; this review is the first, and `dotf spec review CORE-001 --second` launches the second.
+
+## Round 6 — the second signature's Major, reproduced and closed
+
+Round 5 is the first signature (`nan/glm5.3-flash`, PASS). The second, required because `proposal.md` declares `risk: high`, was `anthropic-review/claude-sonnet-5-5`, and it returned **FAIL** with one REAL Major that the first signature did not find. It was reproduced here before anything changed, and it is the reason CORE-001 did not archive at `a479628`.
+
+### The finding
+
+With the leading tighter than the glyph height, the fitter can be left with no safe rectangle, and the revision at `a479628` chose silently which line to lose. At 12 pt on 9 pt leading (ratio 0.75), replacing the third line:
+
+```
+$ uv run python /tmp/rv_repro.py
+font=12 leading=9 (0.75): ['keepkeep0', 'keepkeep1', 'keepkeep2', 'p4', 'keepkeep5', 'keepkeep6', 'keepkeep7', 'ZZZZ']
+font=9  leading=7 (0.78): ['keepkeep0', 'keepkeep1', 'keepkeep2', 'p4', 'keepkeep5', 'keepkeep6', 'keepkeep7', 'ZZZZ']
+font=10 leading=8 (0.80): ['keepkeep0', 'keepkeep1', 'keepkeep2', 'p4', 'keepkeep5', 'keepkeep6', 'keepkeep7', 'ZZZZ']
+```
+
+`keepkeep4` became `p4`: the line BELOW the target lost six characters, with no error and no warning. The mechanism, traced (`/tmp/rv_trace.py`): the target's glyph box is 16.8 pt tall and the next line starts 9 pt lower, so the two boxes overlap by 7.8 pt. Each single trim is accepted and the rectangle is left thin; the next trim is then refused because it would leave the target under the floor -- and the rectangle it keeps still reaches the line below.
+
+### Why no floor value fixes it, and why the docstring was wrong
+
+The second signer proposed deriving the floor from the measured transition. Measured here, the transition is **10.0% on both axes** (width at 6/9/12/18/24 pt, height at the same sizes), so 0.15 was over-strict -- but lowering the floor is not sufficient, and the sweep shows it:
+
+```
+floor=0.15   12/9:LOST ['keepkeep4'] | 9/7:LOST ['keepkeep4'] | 10/8:LOST ['keepkeep4']
+floor=0.12   12/9:LOST ['keepkeep4'] | 9/7:LOST ['keepkeep4'] | 10/8:OK
+floor=0.10   12/9:LOST ['keepkeep4'] | 9/7:OK                 | 10/8:OK
+```
+
+At the exact 10% transition the tightest case still loses the line, because the trim that would spare it leaves 7% of the target's own glyphs -- below the redactor's threshold, so accepting it would leave the replaced value on the page under its replacement. **There is no rectangle that both covers the target and spares that line.** The only remaining choice is which failure to have, and the revision at `a479628` was choosing silently.
+
+The related defect is prose: the floor's own comment claimed "being stricter than the redactor costs a refused trim, and a refused trim only leaves the rectangle where it was". Leaving the rectangle where it was IS the defect this file fixes. The comment is corrected, and it now says what a refusal costs.
+
+### The fix
+
+- The floor is **0.12**: the measured 10% transition plus a small margin, on both axes (both measured, so the first signer's "height was never measured" Minor is answered by measurement rather than by argument). Every point above the transition is a trim refused for no reason, and an unnecessary refusal is now an unnecessary failure -- so the boundary row below exists to keep it honest.
+- A refused trim that would cost a neighbour **on another line** its characters raises `PDFModifierError`, naming the page, the target's rect and the neighbouring line. Refusing beats dropping a line, and it is the same rule the collapsed and unidentified fits already follow. `_refuse_trim_that_drops_another_line` is a new helper; the fitter stays under the repo's thresholds (CC <= 8, nesting <= 2).
+- A co-located neighbour (same band: a label under a value, an overprint) keeps its accepted behaviour: its ink is in the same place, so there is no rectangle to prefer and the fit is not refused. That boundary is deliberate -- CORE-003 (`#199`) tracks the capability that would re-insert those characters.
+
+```
+$ uv run python /tmp/tight_matrix.py
+font=12 leading=9 (0.75): REFUSED
+font=9  leading=7 (0.78): REFUSED
+font=10 leading=8 (0.80): converted; lost=none; new_value=True
+font=12 leading=10 (0.83): converted; lost=none; new_value=True
+font=9  leading=8 (0.89): converted; lost=none; new_value=True
+```
+
+### RED, three mutations, each aimed at a different claim
+
+```
+M5  refusal neutralised (silent damage returns)     2 failed / 26 passed   <- the two refusal rows
+M6  floor back to the over-strict 0.15               1 failed / 27 passed   <- the 10pt-on8pt boundary
+M7  floor 0.5 (the second signer's probe)            2 failed
+```
+
+M6 is the answer to the second signer's sharpest methodological point -- "mutating the floor to 0.5 leaves all 24 tests green", so nothing pinned the floor from above. Something does now: an over-strict floor is caught by the boundary row, not only an under-strict one.
+
+### Minor findings from the second signature, dispositioned
+
+| Finding | Disposition | Evidence |
+|---|---|---|
+| The probe cannot see refused trims, so "a refusal costs nothing" was unmeasurable | **Applied** | `probe_fitter_reachability.py` counts them: 15 refused trims across the suite, of which the damaging one is gone. |
+| Re-parsing the page per rectangle: 70 matches on an 840-span page in 1.35 s against 0.10 s at the base, 840 matches in 18.8 s against 4.2 s | **Ticketed** | CORE-005 (`#202`): parse the page once per page rather than once per rectangle. Accepted here because the alternative is inferring the glyphs from bounding boxes, which is the defect. |
+| `ruff format --check` fails on the regression file | **Applied** | Real, and it exposed a skew rather than a formatting slip: the venv resolves ruff 0.15.5 while `.pre-commit-config.yaml` pins v0.8.6, and the two formatters disagree on those lines. The file now satisfies both, and the skew is filed as CI-004 (`#203`). `make check` does not run `ruff format`, which is why it was green despite this. |
+| The two-candidate span-order path, and rotated text | **Already ticketed** | CORE-004 (`#201`), filed from the first signature's same finding; the second signature adds "rotated text is untested rather than demonstrated". |
+| Is leading/font below 0.8 in scope? | **Answered: yes** | The proposal says "tight page" and the corpus is thermal-receipt data, where 12 pt on 9 pt leading is plausible. Declaring it out of scope would have turned a reproduced content loss into a documented limit, so the code was changed instead. |
 
 ## ADR-014 conditions
 

@@ -22,7 +22,14 @@ from pdf_modifier.core import modifier
 
 _ORIGINAL_FIT = modifier.PDFModifier._fit_redaction_to_its_own_text_object
 _ORIGINAL_GLYPHS = modifier.PDFModifier._glyph_boxes
-_STATS: dict[str, int] = {"fits": 0, "unidentified": 0, "collapsed": 0, "identified_misses": 0}
+_ORIGINAL_REFUSE = modifier.PDFModifier._refuse_trim_that_drops_another_line
+_STATS: dict[str, int] = {
+    "fits": 0,
+    "refused_trims": 0,
+    "unidentified": 0,
+    "collapsed": 0,
+    "identified_misses": 0,
+}
 
 
 def _fit(page: Any, rect: Any) -> Any:
@@ -44,11 +51,26 @@ def _glyph_boxes(target: Any) -> Any:
     return glyphs
 
 
+def _refuse(page: Any, rect: Any, other: Any, trimmed: Any, centre: Any) -> None:
+    """Count every refused trim, including the harmless ones the guard lets through.
+
+    The second signer's Point: counting collapses and unidentified targets makes
+    the probe blind to the refusal that costs content, which is this path. A call
+    here is a refused trim; only one whose neighbour is on another line and is
+    still reached by the kept rect raises.
+    """
+    _STATS["refused_trims"] += 1
+    return _ORIGINAL_REFUSE(page, rect, other, trimmed, centre)
+
+
 _PATCHERS: list[Any] = [
     mock.patch.object(
         modifier.PDFModifier, "_fit_redaction_to_its_own_text_object", staticmethod(_fit)
     ),
     mock.patch.object(modifier.PDFModifier, "_glyph_boxes", staticmethod(_glyph_boxes)),
+    mock.patch.object(
+        modifier.PDFModifier, "_refuse_trim_that_drops_another_line", staticmethod(_refuse)
+    ),
 ]
 for _patcher in _PATCHERS:
     _patcher.start()

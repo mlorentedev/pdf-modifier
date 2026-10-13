@@ -36,8 +36,10 @@
 
 - [x] Independent adversarial review, round 1 (`dotf spec review CORE-001`) — **FAIL**: one REAL Blocker (above) plus two minor findings. The archive gate refused, correctly.
 - [x] Independent adversarial review, round 2 (`nan/deepseek-v4-flash`) — **FAIL**: one REAL Major (round 3 below), three minors. Round 1's Blocker was confirmed genuinely closed, by independent reproduction of four shapes the spec never tested.
-- [ ] Independent adversarial review, round 3 (`nan/deepseek-v4-flash`) — **FAIL**: two REAL Majors, three minors. Both Majors were real and were reproduced here before anything changed (below). Round 1's Blocker and round 2's Major were confirmed genuinely closed.
-- [ ] Independent adversarial review, round 4 — **fresh**, because a review is not recyclable and the branch moved after every one
+- [x] Independent adversarial review, round 3 (`nan/deepseek-v4-flash`) — **FAIL**: two REAL Majors, three minors. Both Majors were real and were reproduced here before anything changed (below). Round 1's Blocker and round 2's Major were confirmed genuinely closed.
+- [x] Independent adversarial review, round 4 (`nan/glm5.3-flash`, drawn from the pool) — **PASS**, the first round that did not fail. It re-ran the whole RED matrix itself and reproduced every recorded number; it left two THEORETICAL minors and a mutation-testing note, both ticketed as CORE-004 (`#201`).
+- [x] Second signature (`anthropic-review/claude-sonnet-5-5`, required because `risk: high`) — **FAIL**: one REAL Major the first signature did not find, plus a real format finding, a real performance finding and a methodology point. Reproduced here before anything changed; closed by fix round 4 below.
+- [ ] Independent adversarial review, round 5 — **fresh**, because a review is not recyclable and the branch moved
 - [ ] Archive to `specs/archive/CORE-001/`
 
 ## Fix round 2 — the review's Major finding (round 2: **FAIL**)
@@ -60,3 +62,16 @@
 - [x] Make the refusal's cost a measurement instead of an assertion: `backend/scripts/probe_fitter_reachability.py` counts **121 fits, 1 collapse, 1 unidentified target over the whole suite — both from the guard's own stub pages, none from a real document**.
 - [x] All eight `features.json` verification commands are run here and exit 0 with a plain whitespace split (no shell quoting required), because a verification command that cannot run is not one.
 - [x] `make check` **405 passed**, coverage **84.70%**; `ruff` and `mypy --strict` clean; fitter functions at CC 8/5/4/4/3/3/2, nesting ≤ 2.
+
+## Fix round 4 — the second signature's Major (second signer: **FAIL**, first signer had PASSed)
+
+- [x] Reproduce the Major before touching anything: with the leading tighter than the glyph height, `keepkeep4` became `p4` at 12 pt on 9 pt leading — the line BELOW the target losing six characters with no error and no warning. Traced the mechanism: the target's 16.8 pt glyph box overlaps the next line's box by 7.8 pt, so every rect that covers the target reaches that line, and the trim that would spare it is refused.
+- [x] Measure what the second signer could not: the redactor's **height** transition, at 6/9/12/18/24 pt, which is **10.0% of the character's height at every size** — the same as the width. So the first signer's "the height rule was never measured" Minor is answered by measurement, not by argument.
+- [x] Correct a claim this spec wrote and the second signer was right to call false: the floor's comment said "a refused trim only leaves the rectangle where it was", and leaving the rectangle where it was IS the defect. The comment now states what a refusal costs, and the code no longer treats it as free.
+- [x] Sweep the floor to show that lowering it cannot fix this case: 15% and 12% lose the line at 12/9 and 9/7; even the exact 10% transition loses it, because the trim that would spare the line leaves 7% of the target's own glyphs. There is no rect that covers the target and spares that line, so the fit must choose which failure to have — loudly.
+- [x] Set the floor to **0.12** (measured transition plus a margin, both axes) and add `_refuse_trim_that_drops_another_line`: a refused trim that would cost a neighbour on ANOTHER LINE its characters raises `PDFModifierError` naming the page, the target's rect and the line. A same-band neighbour keeps its accepted behaviour (CORE-003, `#199`) — its ink is in the same place, so there is no rect to prefer.
+- [x] Regression rows at 12/9 and 9/7 asserting the refusal, that it names the line it protects, and that no half-written document is left; plus boundary rows at 10/8 and 12/10 asserting they still convert without losing anything, since every unnecessary refusal is a document that used to convert.
+- [x] RED, one mutation per claim: refusal neutralised -> **2 failed / 26 passed**; floor back to 0.15 -> **1 failed / 27 passed** (the boundary row, which is the second signer's "0.5 leaves all 24 green" answered from above); floor 0.5 -> **2 failed**.
+- [x] Extend the probe to count **refused trims** — the blind spot the second signer named, because the refusal that costs content was invisible in the counts: **125 fits, 15 refused trims, 1 collapse, 1 unidentified target** across the suite.
+- [x] File what was not fixed here: CORE-005 (`#202`, the page re-parsed per rectangle: 1.35 s against 0.10 s for 70 matches on an 840-span page) and CI-004 (`#203`, the venv's ruff 0.15.5 against the hook's pinned v0.8.6, which disagree about formatting while `make check` runs neither).
+- [x] `make check` **409 passed**, coverage **84.88%**; `ruff` and `mypy --strict` clean.

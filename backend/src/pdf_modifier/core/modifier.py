@@ -26,16 +26,24 @@ logger = setup_logging(__name__)
 DEFAULT_MAX_FILE_SIZE_BYTES: int = 100 * 1024 * 1024  # 100 MB
 
 # How much of a character's box a redaction rectangle must reach before
-# `apply_redactions` removes it. Measured, by bisecting the transition at 6, 9,
-# 12, 18 and 24 pt: the character goes at 10.0% of its **width** at every size,
-# so the rule is a fraction of the box rather than a fixed distance. `intersects`
+# `apply_redactions` removes it. Measured by bisecting the transition at 6, 9, 12,
+# 18 and 24 pt, on BOTH axes: the character goes at 10.0% of its **width** and
+# 10.0% of its **height**, at every size, so the rule is a fraction of the box
+# rather than a fixed distance, and one constant covers both axes. `intersects`
 # is therefore NOT the redactor's predicate -- a rectangle reaching a glyph by a
 # 7% sliver passes `intersects` and the glyph survives, which is round 3's Finding
-# 1 (one character of the replaced value left under its replacement). 15% is above
-# the measured transition and above that sliver: being stricter than the redactor
-# costs a refused trim, and a refused trim only leaves the rectangle where it was,
-# while being laxer costs content, silently.
-GLYPH_COVERAGE_FLOOR: float = 0.15
+# 1 (one character of the replaced value left under its replacement). 15% was the
+# first value here and the second signer was right that it is over-strict: every
+# percentage point above the measured transition is a trim refused for no reason.
+# 12% is the measured transition plus a margin, deliberately small.
+#
+# A refused trim is NOT free, which the first version of this comment claimed: the
+# trim is what keeps the rectangle off the neighbouring lines, so refusing one
+# leaves the rectangle where it was and the neighbour is redacted instead. That is
+# the defect this file exists to fix, so a refusal that would cost a neighbour its
+# characters on ANOTHER LINE now raises -- see
+# `_refuse_trim_that_drops_another_line`.
+GLYPH_COVERAGE_FLOOR: float = 0.12
 
 
 class PDFModifier:
@@ -275,6 +283,17 @@ class PDFModifier:
         A neighbour that fails the second invariant is not a neighbour to trim
         against: it shares the target's own ink, so the rect has to cover both and
         the untrimmed rectangle is kept.
+
+        * **A refusal may not drop another LINE** -- the second signer's finding,
+          and the reason the sentence above is not the end of the story. Refusing
+          a trim is only harmless when the rectangle it keeps is harmless. With
+          leading tighter than the glyph height (a 12 pt font at 9 pt leading),
+          every single trim is accepted and the rectangle is left thin; a later
+          one is refused because it would leave the target under the floor, and
+          the neighbour it was trimming against -- a different line -- is then
+          redacted and never re-inserted. Measured: `keepkeep4` became `p4`.
+          There is no rect that both covers the target and spares that line, so
+          the fit refuses instead of choosing which line to lose.
         """
         centre = fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
         spans = PDFModifier._text_spans(page)
@@ -295,10 +314,48 @@ class PDFModifier:
             candidate = PDFModifier._trim_away_from(trimmed, other, centre)
             if PDFModifier._is_safe_trim(candidate, glyphs):
                 trimmed = candidate
+            else:
+                PDFModifier._refuse_trim_that_drops_another_line(page, rect, other, trimmed, centre)
 
         if trimmed.get_area() <= 0:
             PDFModifier._refuse_collapsed_fit(page, rect, trimmed)
         return trimmed
+
+    @staticmethod
+    def _refuse_trim_that_drops_another_line(
+        page: fitz.Page,
+        rect: fitz.Rect,
+        other: fitz.Rect,
+        trimmed: fitz.Rect,
+        centre: fitz.Point,
+    ) -> None:
+        """Refuse a fit whose only options are losing the target or losing a line.
+
+        A trim is refused when it would leave a glyph of the object being replaced
+        under the floor -- correct in itself. What makes it a failure is what the
+        refusal leaves behind: `trimmed`, which still reaches `other`. If `other` is
+        on another line, its characters are redacted, never re-inserted, and the
+        page says nothing -- the defect this whole file is about.
+
+        Only a DIFFERENT line raises. A neighbour sharing the target's band is the
+        co-located case (a label drawn under a value, an overprint): its ink is in
+        the same place, so a redaction reaching one reaches the other and there is
+        no rect to prefer. That case stays accepted and pinned (CORE-003, `#199`).
+        """
+        same_line = other.y0 <= centre.y <= other.y1
+        if same_line or not other.intersects(trimmed):
+            return
+        raise PDFModifierError(
+            f"Cannot fit the redaction rectangle on page {page.number + 1}: covering "
+            f"{tuple(round(v, 3) for v in rect)} needs the rectangle to reach the "
+            f"neighbouring line at {tuple(round(v, 3) for v in other)}, whose "
+            f"characters would be removed and not re-inserted.",
+            {
+                "page": page.number + 1,
+                "rect": [float(v) for v in rect],
+                "neighbour": [float(v) for v in other],
+            },
+        )
 
     @staticmethod
     def _refuse_unidentified_target(page: fitz.Page, rect: fitz.Rect) -> None:

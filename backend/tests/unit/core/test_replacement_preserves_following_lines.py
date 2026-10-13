@@ -377,6 +377,98 @@ def test_a_label_sharing_the_target_ink_loses_exactly_the_shared_characters(
     )
 
 
+TIGHT_BLOCKS = ((12.0, 9.0), (9.0, 7.0))
+TIGHT_LINES = 8
+TIGHT_TARGET_LINE = 3
+
+
+def write_tight_leading_block(path: Path, *, font: float, leading: float) -> None:
+    """A block whose leading is tighter than its own glyph height.
+
+    The target's glyph box overlaps the line below it, so every rect that covers
+    the target also reaches that neighbour's characters. Trimming is the only way
+    to spare them, and the trim that would is refused for leaving the target under
+    the coverage floor: there is no safe rect, only a choice of which line to lose.
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    for index in range(TIGHT_LINES):
+        text = TARGET if index == TIGHT_TARGET_LINE else f"keepkeep{index}"
+        page.insert_text((72, 72 + index * leading), text, fontname="cobo", fontsize=font)
+    doc.save(str(path))
+    doc.close()
+
+
+@pytest.mark.parametrize(
+    ("font", "leading"),
+    TIGHT_BLOCKS,
+    ids=[f"{font}pt-on{leading}pt" for font, leading in TIGHT_BLOCKS],
+)
+def test_a_tight_block_is_refused_rather_than_losing_the_line_below(
+    tmp_path: Path, font: float, leading: float
+) -> None:
+    """The second signer's Major: a refused trim handed the damage to a line.
+
+    At 12 pt on 9 pt leading each single trim is accepted and the rect is left
+    thin; the next one is refused, and the neighbour it was trimming against --
+    the line BELOW, not the object being replaced -- was redacted and never
+    re-inserted. Measured on the previous revision, with no error and no warning:
+    `keepkeep4` became `p4`. A refused trim is not free, so the fit refuses.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_tight_leading_block(src, font=font, leading=leading)
+
+    with pytest.raises(PDFModifierError) as raised:
+        PDFModifier(str(src), str(out)).process(
+            ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]})
+        )
+
+    assert "neighbouring line" in str(raised.value), "the refusal must name what it protects"
+    source = fitz.open(str(src))[0]
+    neighbour = next(
+        span["bbox"]
+        for block in source.get_text("rawdict")["blocks"]
+        for line in block.get("lines", [])
+        for span in line["spans"]
+        if "".join(char["c"] for char in span["chars"]) == f"keepkeep{TIGHT_TARGET_LINE + 1}"
+    )
+    assert raised.value.details["neighbour"] == [
+        float(v) for v in neighbour
+    ], "the refusal must name the line it protects, not a line at random"
+    assert not out.exists(), "a refused conversion must not leave a half-written document"
+
+
+@pytest.mark.parametrize(
+    ("font", "leading"), ((10.0, 8.0), (12.0, 10.0)), ids=["10pt-on8pt", "12pt-on10pt"]
+)
+def test_a_slightly_tight_block_is_still_fitted_without_losing_anything(
+    tmp_path: Path, font: float, leading: float
+) -> None:
+    """The boundary from the other side: the measured floor must not over-refuse.
+
+    10 pt on 8 pt leading is the third shape the second signer listed, and it
+    failed only because 15% of a glyph is stricter than the redactor needs: at the
+    measured 10% transition the trim is accepted, the line below keeps every
+    character, and the target is still replaced. Without this row, "refuse when
+    unsure" is indistinguishable from a fitter that refuses too much -- and every
+    unnecessary refusal is a document that used to convert.
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_tight_leading_block(src, font=font, leading=leading)
+
+    PDFModifier(str(src), str(out)).process(ReplacementSpec(replacements={TARGET: REPLACEMENTS[0]}))
+
+    lines = read_lines(out)
+    dropped = [
+        f"keepkeep{index}"
+        for index in range(TIGHT_LINES)
+        if index != TIGHT_TARGET_LINE and f"keepkeep{index}" not in lines
+    ]
+    assert not dropped, f"a line beside the target was dropped: {dropped}"
+    assert REPLACEMENTS[0] in lines, "the target was not replaced"
+    assert TARGET not in lines, "the target survived"
+
+
 class _StubPage:
     """A page whose text objects sit exactly where a test needs them.
 
