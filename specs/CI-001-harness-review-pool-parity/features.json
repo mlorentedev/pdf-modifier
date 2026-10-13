@@ -1,0 +1,65 @@
+[
+  {
+    "id": "CI-001-harness-review-pool-parity-f1",
+    "behavior": "AC1: every pool entry declares a non-blank id and vendor and a legal signs value, and no Anthropic entry resolves to signs:first.",
+    "verification": "python3 -c \"import json;d=json.load(open('harness/reviewer-pool.json'));p=d['pool'];assert p;assert all(e.get('id','').strip() and e.get('vendor','').strip() for e in p),'blank id/vendor';assert all(e.get('signs','first') in ('first','second','fallback') for e in p),'illegal signs';bad=[e['id'] for e in p if e['vendor']=='anthropic' and e.get('signs','first')=='first'];assert not bad,'anthropic signs first: %s'%bad;print('pool ok:',len(p),'entries')\"",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f2",
+    "behavior": "AC1: the launcher refuses a `signs: second` member named as the first signer, before any model is launched.",
+    "verification": "dotf spec review CI-001-harness-review-pool-parity --reviewer anthropic-review/claude-sonnet-5-5 --dry-run 2>&1 | grep -q \"it only gives a second signature\"",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f3",
+    "behavior": "AC1: the launcher resolves a legal first signer from this repo's pool and pins provider and model explicitly.",
+    "verification": "dotf spec review CI-001-harness-review-pool-parity --reviewer nan/deepseek-v4-flash --dry-run | grep -q 'deepseek-v4-flash'",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f4",
+    "behavior": "AC2: no pool entry names a model the canary reports refused.",
+    "verification": "dotf secrets run --only NAN_API_KEY -- dotf harness canary",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f5",
+    "behavior": "AC3: at least one pooled member was exercised with a real `dotf spec review` run in this repo, and the result is recorded.",
+    "verification": "grep -q 'Measured review' specs/CI-001-harness-review-pool-parity/verification.md",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f6",
+    "behavior": "AC4: the CI route draws by weight across the members that answered, and with the Anthropic secret absent draws NaN-only and says so without failing.",
+    "verification": "bash tests/pr-agent-route.bats",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f7",
+    "behavior": "AC5: a PR at or above pr_agent_risk.min_changed_lines, or carrying the deep-review label, reviews first on the route:risk member.",
+    "verification": "bash tests/pr-agent-route.bats --filter risk",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f8",
+    "behavior": "AC6: with a planted dead model bound in harness/model-map.json, the canary exits non-zero and rewrites exactly one labelled issue; when every model answers it closes that issue.",
+    "verification": "bash tests/model-canary.bats",
+    "state": "pending",
+    "evidence": ""
+  },
+  {
+    "id": "CI-001-harness-review-pool-parity-f9",
+    "behavior": "AC7: no workflow interpolates a secret context into a run: block, so no credential can reach an output stream.",
+    "verification": "! grep -nE 'run:[[:space:]]*\\$\\{\\{[[:space:]]*secrets\\.' .github/workflows/pr-agent.yml .github/workflows/model-canary.yml",
+    "state": "pending",
+    "evidence": ""
+  }
+]
