@@ -25,11 +25,18 @@ created: "2026-10-12"
 - [ ] [AC1] `backend/pyproject.toml`: `[project].name` → `pdf-modifier`; the `[project.scripts]` key → `pdf-modifier`; every remaining `pdf-modifier-mcp` in the file (URLs, description).
       Run: `cd backend && uv run uv sync --all-extras && uv run pdf-modifier --help`. Expected: **exit 0**, usage printed.
 - [ ] [P] [AC3] `backend/server.json`: `name` → `io.github.mlorentedev/pdf-modifier`, `title` → `PDF Modifier` (unchanged), `repository.url` → the new slug.
-- [ ] [P] [AC2] Live identity references: `README.md`, `SECURITY.md`, `Makefile` (`APP_NAME`), `.env.example`, `smithery.yaml`, `harness/review-attestation.json`, `backend/src/pdf_modifier/{__init__,interfaces/mcp,web/app}.py`, `backend/tests/unit/{interfaces/test_mcp,scripts/test_gen_env}.py`, `backend/Dockerfile`, `docs/runbooks/new-machine-setup.md`.
+- [ ] [P] [AC2] Live identity references: `README.md`, `SECURITY.md`, `Makefile` (`APP_NAME`), `.env.example`, `smithery.yaml`, `harness/review-attestation.json`, `backend/src/pdf_modifier/{__init__,interfaces/mcp,web/app}.py`, `backend/tests/unit/{interfaces/test_mcp,scripts/test_gen_env}.py`, `backend/Dockerfile`, `docs/runbooks/new-machine-setup.md`, `.github/ISSUE_TEMPLATE/config.yml`, `.github/templates/CHANGELOG.md.j2`.
       Run the guard. Expected: **PASS**.
-- [ ] [P] [AC4] Docs site: `site/astro.config.mjs`, `site/package.json` and the five `site/src/content/docs/**` files.
+- [ ] [AC1] **The runtime distribution lookups are not strings — they raise.** `backend/src/pdf_modifier/__init__.py` and `web/app.py` call `importlib.metadata.version("pdf-modifier-mcp")`; once the distribution is renamed that raises `PackageNotFoundError`, so `import pdf_modifier` fails and the version endpoint breaks. Replace both with the new name and add a test that **imports the package and reads `__version__`**, because the guard above passes on a string that is gone from a lookup that is now dead.
+- [ ] [AC1] `backend/README.md` line 1 carries `<!-- mcp-name: io.github.mlorentedev/pdf-modifier-mcp -->`, the MCP registry ownership marker. It must equal `server.json`'s `name` exactly, so both move together or the registry entry stops matching the repo.
+- [ ] [AC2] **Slug-agnostic rewrite where the string is historical.** `harness/review-attestation.json` records a measurement taken with `gh api repos/mlorentedev/pdf-modifier-mcp/…`; the measurement is real and the slug was accurate when it was made. Rewrite the path as `<owner>/<repo>` rather than replacing it with the new slug, which would claim the measurement was taken on a name that did not exist yet.
+- [ ] [P] [AC4] Docs site: `site/astro.config.mjs`, `site/package.json` and the five `site/src/content/docs/**` files. Two non-obvious ones: `base: '/pdf-modifier-mcp'` is the **GitHub Pages project path**, which follows the repo slug, and the internal links `/pdf-modifier-mcp/getting-started/` must move with it or they 404 on the published site.
       Run: `cd site && npm install && npm run build`. Expected: **exit 0**.
 - [ ] [AC6] Full suite: `make check`, `make check-frontend`, `bash scripts/check-lessons.sh`. Expected: all green, coverage ≥ 80%.
+
+## The vault project folder is coupled to the repo name
+
+- [ ] [AC5] Rename `$VAULT_PATH/10_projects/pdf-modifier-mcp/` to `pdf-modifier/`, together with the `memory/` symlink in this repo, because `dotf mem thread --project <repo>` resolves the project directory **by repo name**: rename the repo without this and every future session's handoff lookup misses its own memory. `docs/runbooks/new-machine-setup.md` names the vault path and must follow. Do this **in the same window as the repo rename**, not before (the vault is the memory sink and must not point at a name that does not exist yet) and not after (the lookup breaks in the gap).
 
 ## Cross-repo: the credential consumers (own PR in `dotfiles`)
 
