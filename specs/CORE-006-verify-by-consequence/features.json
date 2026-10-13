@@ -1,0 +1,44 @@
+[
+  {
+    "id": "CORE-006-f1",
+    "behavior": "A block at 0.60 em leading — the arrangement CORE-001 loses characters on silently — either keeps every non-target text object's characters or is refused. Read from the written output file, never from the in-memory page.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_sub_half_leading_block_is_refused_or_preserved -q --no-cov",
+    "state": "pending",
+    "evidence": "RED: the row does not exist yet; it is the first task, and the failing run it produces is what opens core/modifier.py (ADR-014 condition 1)."
+  },
+  {
+    "id": "CORE-006-f2",
+    "behavior": "The whole ailing range holds: from 0.45 em to 1.30 em leading, refuse-or-preserve, with no silent loss at any step. A row per leading, so a partial fix cannot be read as the whole range.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_no_leading_in_the_ailing_range_loses_characters_silently -q --no-cov",
+    "state": "pending",
+    "evidence": "pending"
+  },
+  {
+    "id": "CORE-006-f3",
+    "behavior": "The check FIRES: with the fitter made to return the raw, unfitted rectangle, the conversion refuses. A consequence check that has never been shown to fire is a green check that reads nothing.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_planted_loss_is_caught_by_the_consequence_check -q --no-cov",
+    "state": "pending",
+    "evidence": "pending"
+  },
+  {
+    "id": "CORE-006-f4",
+    "behavior": "Every document that converts today still converts — the two-span receipt line, the three overprint shapes, 10 pt-on-8 pt, 12 pt-on-10 pt, and the watermark page in both span orders. An unnecessary refusal is the same defect as a silent loss, in the other direction.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py -q --no-cov",
+    "state": "pending",
+    "evidence": "pending"
+  },
+  {
+    "id": "CORE-006-f5",
+    "behavior": "The refusal names the page and the damaged object, reuses PDFModifierError with the existing details convention, and leaves no half-written output file.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_the_refusal_names_the_damaged_object_and_writes_no_output -q --no-cov",
+    "state": "pending",
+    "evidence": "pending"
+  },
+  {
+    "id": "CORE-006-f6",
+    "behavior": "The existing suite passes unchanged and the extra cost is measured and stated: one more page-text read per page with a replacement, against CORE-005's 1.35 s for 70 matches on an 840-span page.",
+    "verification": "cd backend && uv run pytest -q --no-cov",
+    "state": "pending",
+    "evidence": "pending"
+  }
+]
