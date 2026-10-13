@@ -1,9 +1,30 @@
 [
   {
     "id": "CORE-001-f1",
-    "behavior": "Outcome 1",
-    "verification": "echo 'not implemented' && exit 1",
+    "behavior": "AC2: replacing a span inside a multi-object block keeps every input line except the one deliberately replaced -- for a replacement that is wider, one that is narrower, and one that is shorter. The single-object block is the control that never had the defect.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_no_untouched_line_is_lost -q --no-cov",
     "state": "pending",
-    "evidence": ""
+    "evidence": "passed: 6 passed (3 replacement sizes x 2 structures). Round 1 was 3 failed / 3 passed before the fix."
+  },
+  {
+    "id": "CORE-001-f2",
+    "behavior": "The same inclusion holds when the replaced span SHARES ITS LINE with another text object -- a key-value receipt line drawn as a label span and a value span, in different colours. This is the Blocker of the independent review's round 1, where the y-only trim collapsed the rect and the guard returned the raw one.",
+    "verification": "cd backend && uv run pytest \"tests/unit/core/test_replacement_preserves_following_lines.py::test_no_untouched_line_is_lost_when_the_target_line_has_two_spans\" -q --no-cov",
+    "state": "pending",
+    "evidence": "passed: 3 passed (wider / narrower / shorter). RED with the fitter neutralised: 3 failed / 3 passed against the single-object control."
+  },
+  {
+    "id": "CORE-001-f3",
+    "behavior": "A redaction rectangle that cannot be fitted to the text object being replaced is REPORTED. It is never silently swapped for the raw, unfitted rectangle -- that fall-through was the mechanism of the Blocker -- and never silently degenerated, because a 0.02 pt rect removes no glyph at all.",
+    "verification": "cd backend && uv run pytest tests/unit/core/test_replacement_preserves_following_lines.py::test_a_collapsing_fit_raises_instead_of_redacting_the_raw_rect -q --no-cov",
+    "state": "pending",
+    "evidence": "passed: 1 passed. The fit raises PDFModifierError naming the page and both rectangles; checked it fires 0 times across the 183-test core suite before it was made loud."
+  },
+  {
+    "id": "CORE-001-f4",
+    "behavior": "AC5: the existing suite passes unchanged -- this repairs a defect, it does not change intended behaviour. No pre-existing test is modified or deleted; the diff adds the one regression file.",
+    "verification": "cd backend && uv run pytest -q --no-cov",
+    "state": "pending",
+    "evidence": "passed: 391 passed, 19 skipped (was 387 passed, 19 skipped); `make check` green, coverage 84.38%, ruff and mypy --strict clean."
   }
 ]

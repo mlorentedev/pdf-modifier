@@ -177,10 +177,20 @@ class PDFModifier:
         are lost silently -- a receipt in `#179` lost `ARC` and `CVM` this way.
 
         The object being replaced is the one that CONTAINS the rect's centre; a
-        neighbour can only overlap its edge. Trimming the rect away from the
-        neighbours leaves the target fully removed (its object still intersects)
-        while sparing the rest, which a re-insertion could not do for a
-        subset-embedded font whose glyphs may not be re-encodable.
+        neighbour can only overlap its edge. *Which* edge it overlaps decides the
+        axis, and trimming the other one collapses the rect onto itself:
+
+        * a neighbour sharing the rect's vertical band is BESIDE the target, so
+          only x separates them;
+        * a neighbour in another band is above or below it, so only y does.
+
+        The first fix round trimmed y unconditionally. A same-line neighbour has
+        the target's own `y0`, so `y1` was dragged onto `y0`, the rect collapsed,
+        and the guard handed the raw rect back -- re-creating the very content
+        loss this helper exists to prevent (CORE-001's independent review, the
+        Blocker). Trimming the rect away from the neighbours leaves the target
+        fully removed while sparing the rest, which a re-insertion could not do
+        for a subset-embedded font whose glyphs may not be re-encodable.
         """
         trimmed = fitz.Rect(rect)
         centre = fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
@@ -190,14 +200,33 @@ class PDFModifier:
                     other = fitz.Rect(span["bbox"])
                     if other.contains(centre) or not other.intersects(trimmed):
                         continue
-                    if other.y1 <= centre.y:
+                    if other.y0 <= centre.y <= other.y1:
+                        # Same line: the neighbour is beside the target, so the
+                        # edge to give up is the one facing it, in x.
+                        if other.x1 <= centre.x:
+                            trimmed.x0 = max(trimmed.x0, other.x1 + 0.01)
+                        else:
+                            trimmed.x1 = min(trimmed.x1, other.x0 - 0.01)
+                    elif other.y1 <= centre.y:
                         trimmed.y0 = max(trimmed.y0, other.y1 + 0.01)
                     else:
                         trimmed.y1 = min(trimmed.y1, other.y0 - 0.01)
-        # Never hand an empty rect to the redactor: it would remove nothing and
-        # leave the original text in place under the replacement.
+
+        # A collapsed rect is a fitting FAILURE, not a small rect: measured, a
+        # 0.02 pt rect removes no glyph at all, so passing one to the redactor
+        # would leave the original text under the replacement; passing the RAW
+        # rect re-imports the content loss. Neither is acceptable in silence.
         if trimmed.get_area() <= 0:
-            return fitz.Rect(rect)
+            raise PDFModifierError(
+                f"Cannot fit the redaction rectangle to the replaced text object on "
+                f"page {page.number + 1}: {tuple(round(v, 3) for v in rect)} collapsed to "
+                f"{tuple(round(v, 3) for v in trimmed)} while avoiding its neighbours.",
+                {
+                    "page": page.number + 1,
+                    "rect": [float(v) for v in rect],
+                    "trimmed": [float(v) for v in trimmed],
+                },
+            )
         return trimmed
 
     def _apply_replacements_to_page(
