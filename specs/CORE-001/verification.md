@@ -531,6 +531,21 @@ $ PYTHONPATH=scripts uv run pytest -q --no-cov -p probe_fitter_reachability
 PROBE {'fits': 145, 'refused_trims': 18, 'unidentified': 1, 'collapsed': 1, 'identified_misses': 1}
 ```
 
+## Second signature round 1 (`anthropic-review/claude-sonnet-5-5` at `a1b4ae8`): FAIL, one REAL Major — FIXED here
+
+**The Major was a regression against the base commit, and it is reproduced.** A tight block whose fields are ALL being replaced -- three 12 pt lines at 9 pt leading (0.75 em) -- converted in the base and was **refused** at HEAD, with no workaround, because replacing one field at a time is refused too, by design. `_refuse_trim_that_drops_another_line` raised when a refused trim left the rectangle reaching a neighbour on another line **without asking whether that neighbour was itself a replacement target**. A target's characters are removed by design, its replacement is re-inserted, and the consequence check exempts it for exactly that reason, so nothing was being dropped and the refusal was false.
+
+**Fixed**: the page's target objects are decided once, before any fitting, and passed to the guard, which skips a neighbour in that set. `_fit_redaction_to_its_own_text_object` now also takes the page's already-parsed spans instead of re-parsing them -- required for the identities to match, and it removes one page parse per *rectangle*, which is the cost CORE-005 (`#202`) tracks. Rows: `test_a_tight_block_whose_fields_are_all_replaced_still_converts` (RED first: `REFUSED`), with the counter-row `test_a_tight_block_is_refused_rather_than_losing_the_line_below` still refusing, so the guard keeps its original purpose. Mutation M15 (the exemption removed) turns exactly the new row red.
+
+Its remaining findings, dispositioned:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 2 | The fit is quadratic: 70 literals on an 840-span page went 0.10 s -> 1.32 s (13x), one regex over 840 spans 4.07 s -> 23.2 s (5.7x); caching the spans alone (done here) took 23.2 s to 9.9 s, so a real fix needs spatial filtering. | **Ticketed**, CORE-005 (`#202`), which now carries these figures as the baseline it must beat. The span caching above is part of the answer, not all of it. |
+| 3 | The height clause of `_removes_glyph` was unpinned: forcing it to `True` left every unit test green. | **Applied**: `test_removal_needs_the_rectangle_to_reach_the_glyph_on_both_axes`, which fails under exactly that mutation (M16 -> 1 red). |
+| 4 | `features.json` f3/f6 evidence had drifted (28/409 recorded; 50/431 at this head), and `verification.md`'s round numbering is inconsistent with `proposal.md` and `tasks.md` (two different "Round 6"s). | **Applied**: both counts re-measured in the entries above. The numbering is historical -- this file records rounds as they happened, `tasks.md` renumbers them per fix round -- and is called out here rather than silently reconciled. |
+| 5 | The reviewed range carries content from other specs (the release workflow, Dockerfile, `.gitignore`, the Dependabot check, Glama, the rename-guard exclusion, and CORE-006 itself). | **Recorded**: already disclosed above and in `features.json` f6's scope, which this file scopes to the spec's own commits. The reviewer did not escalate it. |
+
 ## ADR-014 conditions
 
 | Condition | Evidence |

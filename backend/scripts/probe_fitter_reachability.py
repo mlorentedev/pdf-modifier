@@ -32,10 +32,10 @@ _STATS: dict[str, int] = {
 }
 
 
-def _fit(page: Any, rect: Any) -> Any:
+def _fit(page: Any, rect: Any, targets: Any = None, spans: Any = None) -> Any:
     _STATS["fits"] += 1
     try:
-        return _ORIGINAL_FIT(page, rect)
+        return _ORIGINAL_FIT(page, rect, targets, spans)
     except modifier.PDFModifierError as exc:
         if "collapsed" in str(exc):
             _STATS["collapsed"] += 1
@@ -51,7 +51,9 @@ def _glyph_boxes(target: Any) -> Any:
     return glyphs
 
 
-def _refuse(page: Any, rect: Any, other: Any, trimmed: Any, centre: Any) -> None:
+def _refuse(
+    page: Any, rect: Any, other: Any, trimmed: Any, centre: Any, targets: Any, span: Any
+) -> None:
     """Count every refused trim, including the harmless ones the guard lets through.
 
     The second signer's Point: counting collapses and unidentified targets makes
@@ -60,7 +62,7 @@ def _refuse(page: Any, rect: Any, other: Any, trimmed: Any, centre: Any) -> None
     still reached by the kept rect raises.
     """
     _STATS["refused_trims"] += 1
-    return _ORIGINAL_REFUSE(page, rect, other, trimmed, centre)
+    _ORIGINAL_REFUSE(page, rect, other, trimmed, centre, targets, span)
 
 
 _PATCHERS: list[Any] = [

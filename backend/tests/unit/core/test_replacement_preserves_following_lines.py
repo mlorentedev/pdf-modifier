@@ -686,7 +686,7 @@ def test_a_planted_loss_is_caught_by_the_consequence_check(
     monkeypatch.setattr(
         PDFModifier,
         "_fit_redaction_to_its_own_text_object",
-        staticmethod(lambda page, rect: fitz.Rect(rect)),
+        staticmethod(lambda page, rect, targets=None, spans=None: fitz.Rect(rect)),
     )
     src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
     write_payment_block(src, structure="mixed-style-line")
@@ -908,3 +908,66 @@ def test_the_watermark_page_reports_the_same_loss_in_both_span_orders(tmp_path: 
 
     same = reports[True] == reports[False]
     assert same, f"span order changed what the page loses: {reports[True]} vs {reports[False]}"
+
+
+def write_a_tight_block_whose_fields_are_all_replaced(
+    path: Path, *, font: float = 12.0, leading: float = 9.0
+) -> None:
+    """Three adjacent fields of one tight block, ALL of them being replaced."""
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 40), "far above", fontname="cobo", fontsize=9)
+    for index in range(3):
+        page.insert_text(
+            (72, 72 + index * leading), f"FIELD{index}", fontname="cobo", fontsize=font
+        )
+    page.insert_text((72, 120), "far below", fontname="cobo", fontsize=9)
+    doc.save(str(path))
+    doc.close()
+
+
+def test_a_tight_block_whose_fields_are_all_replaced_still_converts(
+    tmp_path: Path,
+) -> None:
+    """A neighbour that is itself a target is not a loss, and must not refuse.
+
+    The second signature's Major at `a1b4ae8`: the trim guard raised when a refused
+    trim left the rectangle reaching a neighbour on another line, without asking
+    whether that neighbour was going to be replaced. Every field of this block is,
+    so nothing is dropped -- the base commit converted this page and this branch
+    REFUSED it, and the user had no workaround, because replacing one field at a
+    time is refused too, by design (the row above pins that refusal).
+    """
+    src, out = tmp_path / "in.pdf", tmp_path / "out.pdf"
+    write_a_tight_block_whose_fields_are_all_replaced(src)
+
+    result = PDFModifier(str(src), str(out)).process(
+        ReplacementSpec(replacements={f"FIELD{index}": f"NEWVALUE{index}" for index in range(3)})
+    )
+
+    assert result.success
+    lines = read_lines(out)
+    for index in range(3):
+        assert f"NEWVALUE{index}" in lines, f"field {index} was not replaced: {lines}"
+        assert f"FIELD{index}" not in lines, f"field {index} survived: {lines}"
+    kept = "far above" in lines and "far below" in lines
+    assert kept, f"a line that was not replaced was dropped: {lines}"
+    assert result.warnings == [], f"nothing should have been reported lost: {result.warnings}"
+
+
+def test_removal_needs_the_rectangle_to_reach_the_glyph_on_both_axes() -> None:
+    """The height clause of the removal rule, which nothing pinned.
+
+    Attribution asks whether a rectangle REMOVED a glyph, and the rule is a fraction
+    of the box on BOTH axes -- the measurement bisected width and height
+    separately. Replacing the height comparison with `True` left every unit test
+    green, so a rectangle covering a glyph's full width by a hair of its height
+    counted as "removed" and a loss could be excused by a rectangle that never
+    touched it.
+    """
+    glyph = fitz.Rect(100.0, 100.0, 110.0, 120.0)
+    full_width_sliver_of_height = fitz.Rect(100.0, 100.0, 110.0, 101.0)
+    tall_enough = fitz.Rect(100.0, 100.0, 110.0, 102.0)
+
+    assert not PDFModifier._removes_glyph(full_width_sliver_of_height, glyph)
+    assert PDFModifier._removes_glyph(tall_enough, glyph)

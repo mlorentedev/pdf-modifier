@@ -1,12 +1,12 @@
 {
-  "reviewed_sha": "8b071e97fbd9bf7f2342bf1b192fd45748af8a4d",
-  "reviewer": "nan/qwen3.8-flash",
-  "requested_at": "2026-10-13T21:54:58Z",
-  "review_digest_before": "",
+  "reviewed_sha": "a1b4ae8fda07acb04799697c4fb1c4663cabdb4d",
+  "reviewer": "nan/glm5.3-flash",
+  "requested_at": "2026-10-13T22:06:40Z",
+  "review_digest_before": "6c20e397e1f95c3fe6cbd3fa338b799a78858f6718d84b1a426ecbaaa4129cce",
   "base_sha": "53a697441c2e7f5236ff0ec0d481808d89c62d7a",
   "contract_digests": {
     "features.json": "23deebc973435e5af31ef4a81d833b18eb5b3e38929e20e7428cd8cb5088d347",
-    "proposal.md": "59ade7c5f8c612322d5809537543a55bf1c70e7b6a0cee9e432c4f93665f90ce",
+    "proposal.md": "7b0863adbc0412b5aceebdd69b116ed728b6eb7c51167d4f4a44e9dbd9a38014",
     "tasks.md": "bd6453a2adf3ea98fb0620cb83d2405f2b9dbfabbe56935d1596560cbfaf7db6"
   }
 }

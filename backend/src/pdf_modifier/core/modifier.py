@@ -332,7 +332,12 @@ class PDFModifier:
         return bool(enough_width and enough_height)
 
     @staticmethod
-    def _fit_redaction_to_its_own_text_object(page: fitz.Page, rect: fitz.Rect) -> fitz.Rect:
+    def _fit_redaction_to_its_own_text_object(
+        page: fitz.Page,
+        rect: fitz.Rect,
+        targets: set[int] | None = None,
+        spans: list[dict[str, Any]] | None = None,
+    ) -> fitz.Rect:
         """Shrink a redaction rect so it cannot reach the neighbouring text objects.
 
         `apply_redactions` removes every glyph that INTERSECTS the rect, not only
@@ -372,7 +377,12 @@ class PDFModifier:
           the fit refuses instead of choosing which line to lose.
         """
         centre = fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
-        spans = PDFModifier._text_spans(page)
+        # `spans` is passed in when the caller already has the page: the target set
+        # is keyed by these very objects, and re-parsing the page here would give
+        # different dicts with different identities, so `id(span) in targets` would
+        # never match. It is also one page parse per RECTANGLE that CORE-005
+        # (`#202`) tracks, so a caller with the list in hand should pass it.
+        spans = PDFModifier._text_spans(page) if spans is None else spans
         target = PDFModifier._target_span(rect, spans)
         glyphs = PDFModifier._glyph_boxes(target)
         if not glyphs:
@@ -391,7 +401,9 @@ class PDFModifier:
             if PDFModifier._is_safe_trim(candidate, glyphs):
                 trimmed = candidate
             else:
-                PDFModifier._refuse_trim_that_drops_another_line(page, rect, other, trimmed, centre)
+                PDFModifier._refuse_trim_that_drops_another_line(
+                    page, rect, other, trimmed, centre, targets or set(), span
+                )
 
         if trimmed.get_area() <= 0:
             PDFModifier._refuse_collapsed_fit(page, rect, trimmed)
@@ -404,6 +416,8 @@ class PDFModifier:
         other: fitz.Rect,
         trimmed: fitz.Rect,
         centre: fitz.Point,
+        targets: set[int],
+        span: dict[str, Any],
     ) -> None:
         """Refuse a fit whose only options are losing the target or losing a line.
 
@@ -417,9 +431,18 @@ class PDFModifier:
         co-located case (a label drawn under a value, an overprint): its ink is in
         the same place, so a redaction reaching one reaches the other and there is
         no rect to prefer. That case stays accepted and pinned (CORE-003, `#199`).
+
+        **A neighbour that is ITSELF going to be replaced is not a loss.** Its
+        characters are removed by design and its replacement is re-inserted, so
+        nothing is dropped -- and the consequence check exempts targets for exactly
+        that reason. Without this exception a tight block whose fields are all being
+        replaced was REFUSED, while the base commit converted it (the second
+        signature's Major at `a1b4ae8`, reproduced with three adjacent fields at
+        0.75 em), and the user had no way round it: replacing the fields one at a
+        time is refused too, by design.
         """
         same_line = other.y0 <= centre.y <= other.y1
-        if same_line or not other.intersects(trimmed):
+        if id(span) in targets or same_line or not other.intersects(trimmed):
             return
         raise PDFModifierError(
             f"Cannot fit the redaction rectangle on page {page.number + 1}: covering "
@@ -487,6 +510,19 @@ class PDFModifier:
         # `_check_no_other_object_lost_characters`.
         before = PDFModifier._text_spans(page)
         redactions: list[tuple[fitz.Rect, dict[str, Any] | None]] = []
+        page_rects = [
+            fitz.Rect(rect)
+            for item in items
+            for rect in (item["bboxes"] if "bboxes" in item else [item["bbox"]])
+        ]
+        # Which objects this page is REPLACING, decided once, before any fitting.
+        # A neighbour in this set can be reached safely: it is going to be redacted
+        # and re-inserted anyway, so the trim guard must not refuse on its behalf.
+        targets = {
+            id(span)
+            for span in (PDFModifier._target_span(rect, before) for rect in page_rects)
+            if span is not None
+        }
 
         for item in items:
             # fill=None (not white): removing the text glyphs must not paint a
@@ -495,7 +531,9 @@ class PDFModifier:
             # preserving the page background.
             rects = item["bboxes"] if "bboxes" in item else [item["bbox"]]
             for rect in rects:
-                fitted = self._fit_redaction_to_its_own_text_object(page, fitz.Rect(rect))
+                fitted = self._fit_redaction_to_its_own_text_object(
+                    page, fitz.Rect(rect), targets, before
+                )
                 redactions.append((fitted, PDFModifier._target_span(fitz.Rect(rect), before)))
                 page.add_redact_annot(fitted, fill=None)
 
