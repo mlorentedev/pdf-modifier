@@ -19,7 +19,24 @@ import json
 import tomllib
 from pathlib import Path
 
-BACKEND = Path(__file__).resolve().parents[3]
+
+def _backend_root() -> Path:
+    """The backend directory, found rather than counted.
+
+    `parents[3]` assumes this file sits at a fixed depth, which stops being true
+    the moment the suite runs from a copy: mutmut runs it from `backend/mutants/`,
+    one level deeper and without `server.json` in the copy, and the test died with
+    a FileNotFoundError instead of checking versions. Walking up to the directory
+    that holds both files works in both places, and does not encode the location
+    of the file doing the looking.
+    """
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "pyproject.toml").is_file() and (parent / "server.json").is_file():
+            return parent
+    raise RuntimeError(f"no directory holding pyproject.toml and server.json above {__file__}")
+
+
+BACKEND = _backend_root()
 
 
 def declared_versions() -> dict[str, str]:
