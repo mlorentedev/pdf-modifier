@@ -57,6 +57,10 @@ The document stays outside the repository; the fixture in the test is synthetic 
 | No public contract change | `PDFModifier`'s functions, types and signatures unchanged; one new private static helper |
 | Scoped to the defect | The diff is the helper plus its two call sites; no refactor rides along |
 
+## How this relates to #179
+
+The dropped-lines defect is **not** one of #179's original five findings. It was found afterwards, by generating a real receipt, and added to that ticket with priority **first** there — because it is the only one that destroys content rather than failing to add or preserve it. #179 stays open for the other findings; CORE-001 closes only this one. The chain of reasoning, including the two hypotheses that were falsified by measurement, is in that ticket's comments.
+
 ## Not covered here
 
 The other findings of #179 — the `--help` entry point, cloning a repeated block, metadata, page numbering — are untouched by this change and remain open on that ticket.
