@@ -1,0 +1,9 @@
+[
+  {
+    "id": "CORE-001-f1",
+    "behavior": "Outcome 1",
+    "verification": "echo 'not implemented' && exit 1",
+    "state": "pending",
+    "evidence": ""
+  }
+]
