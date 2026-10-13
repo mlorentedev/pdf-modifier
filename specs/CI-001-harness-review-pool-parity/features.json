@@ -9,14 +9,14 @@
   {
     "id": "CI-001-harness-review-pool-parity-f2",
     "behavior": "AC1: the launcher refuses a `signs: second` member named as the first signer, before any model is launched.",
-    "verification": "dotf spec review CI-001-harness-review-pool-parity --reviewer anthropic-review/claude-sonnet-5-5 --dry-run 2>&1 | grep -q \"it only gives a second signature\"",
+    "verification": "out=$(dotf spec review CI-001-harness-review-pool-parity --reviewer anthropic-review/claude-sonnet-5-5 --dry-run 2>&1); rc=$?; [ $rc -eq 1 ] && printf '%s' \"$out\" | grep -q 'it only gives a second signature'",
     "state": "pending",
     "evidence": ""
   },
   {
     "id": "CI-001-harness-review-pool-parity-f3",
     "behavior": "AC1: the launcher resolves a legal first signer from this repo's pool and pins provider and model explicitly.",
-    "verification": "dotf spec review CI-001-harness-review-pool-parity --reviewer nan/deepseek-v4-flash --dry-run | grep -q 'deepseek-v4-flash'",
+    "verification": "out=$(dotf spec review CI-001-harness-review-pool-parity --reviewer nan/deepseek-v4-flash --dry-run 2>&1); rc=$?; [ $rc -eq 0 ] && printf '%s' \"$out\" | grep -q -- '--provider' && printf '%s' \"$out\" | grep -q 'deepseek-v4-flash'",
     "state": "pending",
     "evidence": ""
   },
