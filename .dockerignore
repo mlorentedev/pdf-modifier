@@ -1,0 +1,35 @@
+# Build context for the root Dockerfile — the Glama/MCP distribution image.
+#
+# That Dockerfile COPYs exactly backend/pyproject.toml, backend/README.md,
+# backend/LICENSE and backend/src. Everything else here is upload weight, and
+# `.env` is the one that matters: a later edit that widens the COPY to the whole
+# context must not be able to bake local credentials into a published image.
+.git
+.github
+.gitignore
+.gitattributes
+.venv
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+frontend
+site
+docs
+specs
+harness
+scripts
+infra
+tests
+backend/tests
+backend/coverage.xml
+backend/uv.lock
+.env
+.env.*
+*.pdf
+*.log
+Dockerfile
+.dockerignore

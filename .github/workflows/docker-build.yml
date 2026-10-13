@@ -8,6 +8,10 @@ on:
       - "backend/**"
       - "frontend/**"
       - "infra/compose*.yml"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "glama.json"
+      - "scripts/check-mcp-image.sh"
       - ".github/workflows/docker-build.yml"
   pull_request:
     branches: [master]
@@ -15,6 +19,10 @@ on:
       - "backend/**"
       - "frontend/**"
       - "infra/compose*.yml"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "glama.json"
+      - "scripts/check-mcp-image.sh"
       - ".github/workflows/docker-build.yml"
 
 permissions:
@@ -193,3 +201,22 @@ jobs:
       - name: Compose down
         if: always()
         run: docker compose -f infra/compose.base.yml down -v
+
+  # The image the MCP directories build, from the Dockerfile in the repository
+  # root. It is not pushed anywhere from here — Glama (and the next directory)
+  # builds it themselves — but it MUST be built and handshaked on every change,
+  # because the first build of a broken Dockerfile was previously Glama's, and a
+  # third party's builder is the one place a failure cannot be read locally.
+  build-glama:
+    name: MCP image (Glama)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Build the root Dockerfile
+        run: docker build --tag pdf-modifier:ci .
+
+      - name: The image answers an MCP handshake with a clean stdout
+        run: scripts/check-mcp-image.sh pdf-modifier:ci
