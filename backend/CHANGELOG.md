@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.10.0](https://github.com/mlorentedev/pdf-modifier/compare/v1.9.2...v1.10.0) (2026-10-13)
+
+
+### Features
+
+* **core:** verify the consequence of a redaction instead of trusting the fit ([#208](https://github.com/mlorentedev/pdf-modifier/issues/208)) ([0028c81](https://github.com/mlorentedev/pdf-modifier/commit/0028c81d0f71a7b0d1e29de58bff47572c4219e1)), closes [#179](https://github.com/mlorentedev/pdf-modifier/issues/179)
+
+
+### Bug Fixes
+
+* **build:** give Glama a single-stage root Dockerfile and smoke-test it in CI ([#195](https://github.com/mlorentedev/pdf-modifier/issues/195)) ([01624de](https://github.com/mlorentedev/pdf-modifier/commit/01624dee3bc417bd0688b183778781674b4c8a9f))
+* **core:** trim the redaction rect along the axis the neighbour is on ([#190](https://github.com/mlorentedev/pdf-modifier/issues/190)) ([47d4a3f](https://github.com/mlorentedev/pdf-modifier/commit/47d4a3fcf0d4651cf5b849755b98f6198863c41a)), closes [#179](https://github.com/mlorentedev/pdf-modifier/issues/179)
+
+
+### Documentation
+
+* **troubleshooting:** publish-failure modes of the release workflow ([#197](https://github.com/mlorentedev/pdf-modifier/issues/197)) ([918df67](https://github.com/mlorentedev/pdf-modifier/commit/918df670dbe7b9afcbb769f6d202ea0d9de8cba5))
+
 ## [1.9.2](https://github.com/mlorentedev/pdf-modifier/compare/v1.9.1...v1.9.2) (2026-10-13)
 
 

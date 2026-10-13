@@ -7,12 +7,12 @@
     "url": "https://github.com/mlorentedev/pdf-modifier",
     "source": "github"
   },
-  "version": "1.9.2",
+  "version": "1.10.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "pdf-modifier",
-      "version": "1.9.2",
+      "version": "1.10.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
