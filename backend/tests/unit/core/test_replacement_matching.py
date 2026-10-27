@@ -121,3 +121,19 @@ def test_regex_rules_keep_the_callers_order_across_passes(tmp_path: Path) -> Non
     text = _page_text(out)
     assert "Sum" in text
     assert "Balance" not in text
+
+
+def test_a_cross_span_match_keeps_the_text_around_it(tmp_path: Path) -> None:
+    """A rule matching the END of one span and the START of the next must not
+    take the rest of those spans with it: `Invoice ` and ` today` stay."""
+    source = _one_line_two_spans(tmp_path / "in.pdf", "Invoice Total", "due today")
+    out = tmp_path / "out.pdf"
+
+    PDFModifier(str(source), str(out)).process(
+        ReplacementSpec(replacements={"Total due": "Balance"})
+    )
+
+    text = _page_text(out)
+    assert "Balance" in text
+    assert "Invoice" in text
+    assert "today" in text

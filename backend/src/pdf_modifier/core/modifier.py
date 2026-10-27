@@ -1023,13 +1023,19 @@ class PDFModifier:
         spans: list[dict[str, Any]],
         involved: list[int],
         merged: str,
-        m_start: int,
-        m_end: int,
+        span_ranges: list[tuple[int, int]],
         replacement_raw: str,
         target: str,
         spec: ReplacementSpec,
     ) -> dict[str, Any]:
-        """Build a replacement item for a cross-span match."""
+        """Build a replacement item for a cross-span match.
+
+        The involved spans are redacted WHOLE, so the replacement is resolved on
+        their whole text, as the single-span path does: a match covering the end
+        of one span and the start of the next keeps the text around it. Resolving
+        only the matched fragment dropped it (`Invoice Total` + ` due today` with
+        `Total due` came out as `Balance`).
+        """
         first_span = spans[involved[0]]
         bboxes = [tuple(spans[i]["bbox"]) for i in involved]
         x0 = min(b[0] for b in bboxes)
@@ -1037,8 +1043,8 @@ class PDFModifier:
         x1 = max(b[2] for b in bboxes)
         y1 = max(b[3] for b in bboxes)
 
-        matched_text = merged[m_start:m_end]
-        new_text, url = self._resolve_replacement(replacement_raw, matched_text, target, spec)
+        involved_text = merged[span_ranges[involved[0]][0] : span_ranges[involved[-1]][1]]
+        new_text, url = self._resolve_replacement(replacement_raw, involved_text, target, spec)
         raw_flags = first_span.get("flags")
         font_flags = self._parse_flags(raw_flags)
         font_props = self._font_resolver.resolve(
@@ -1096,8 +1102,7 @@ class PDFModifier:
                     spans,
                     involved,
                     merged,
-                    m_start,
-                    m_end,
+                    span_ranges,
                     replacement_raw,
                     target,
                     spec,
