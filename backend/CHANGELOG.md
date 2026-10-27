@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.10.1](https://github.com/mlorentedev/pdf-modifier/compare/v1.10.0...v1.10.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **core:** let the longest literal win across both matching passes ([#222](https://github.com/mlorentedev/pdf-modifier/issues/222)) ([551aca4](https://github.com/mlorentedev/pdf-modifier/commit/551aca46fdfb4b290b7eb56f53c53663f8b8dc9e))
+* **core:** surface overprint and stop dropping matches in text replacement ([#219](https://github.com/mlorentedev/pdf-modifier/issues/219)) ([101e341](https://github.com/mlorentedev/pdf-modifier/commit/101e341dab0f41a50c34fbc6e9bb40ea6ec6acb3))
+
 ## [1.10.0](https://github.com/mlorentedev/pdf-modifier/compare/v1.9.2...v1.10.0) (2026-10-13)
 
 
