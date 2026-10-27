@@ -871,17 +871,22 @@ class PDFModifier:
         self,
         span: dict[str, Any],
         spec: ReplacementSpec,
+        rules: list[tuple[str, str]] | None = None,
     ) -> dict[str, Any] | None:
-        """Check if a single span matches any replacement target."""
+        """Check if a single span matches any replacement target.
+
+        `rules` restricts the check to those rules, in that order; by default every
+        rule is tried, literals longest first and regexes in the caller's order.
+        """
         text = span["text"].strip()
         original = span["text"]
 
-        rules = list(spec.replacements.items())
-        if not spec.use_regex:
-            # The first match wins, so with `Total` and `Total due` the more specific
-            # literal must be tried first or it never fires. Regex order is the
-            # caller's: pattern length says nothing about specificity.
-            rules.sort(key=lambda rule: len(rule[0]), reverse=True)
+        if rules is None:
+            rules = (
+                list(spec.replacements.items())
+                if spec.use_regex
+                else self._literal_rules_longest_first(spec)
+            )
 
         for target, replacement_raw in rules:
             match_found = False
@@ -921,36 +926,47 @@ class PDFModifier:
     ) -> list[dict[str, Any]]:
         """Scan page and collect items to replace.
 
-        Two-pass approach:
-        1. Single-span matching (fast path for most cases).
-        2. Cross-span matching per line.
+        Two passes per line: single-span matching (the fast path), then
+        cross-span matching. A span belongs to exactly one line, so the passes
+        only compete for spans within a line, and a span claimed by one is
+        skipped by the other.
+
+        Literal rules run longest first through BOTH passes: run pass by pass,
+        `Total` claimed the first span of a line drawn as `Total` + `due` before
+        the cross-span pass could try the more specific `Total due` (#220).
+        Regex rules keep the caller's order, one pass after the other.
         """
         items: list[dict[str, Any]] = []
         matched_span_ids: set[int] = set()
         blocks = page.get_text("dict")["blocks"]
+        lines = [line for block in blocks for line in block.get("lines", [])]
 
-        # Pass 1: single-span matching
-        for block in blocks:
-            if "lines" not in block:
-                continue
-            for line in block["lines"]:
+        rule_groups: list[list[tuple[str, str]]] = [list(spec.replacements.items())]
+        if not spec.use_regex:
+            rule_groups = [[rule] for rule in self._literal_rules_longest_first(spec)]
+
+        for line in lines:
+            for rules in rule_groups:
                 for span in line["spans"]:
-                    item = self._match_single_span(span, spec)
+                    if id(span) in matched_span_ids:
+                        continue
+                    item = self._match_single_span(span, spec, rules)
                     # No early exit: a sibling span on the same line may match too.
                     if item:
                         items.append(item)
                         matched_span_ids.add(id(span))
-
-        # Pass 2: cross-span matching
-        for block in blocks:
-            if "lines" not in block:
-                continue
-            for line in block["lines"]:
-                if len(line["spans"]) < 2:
-                    continue
-                items.extend(self._match_across_spans(line["spans"], spec, matched_span_ids))
+                if len(line["spans"]) >= 2:
+                    items.extend(
+                        self._match_across_spans(line["spans"], spec, matched_span_ids, rules)
+                    )
 
         return items
+
+    @staticmethod
+    def _literal_rules_longest_first(spec: ReplacementSpec) -> list[tuple[str, str]]:
+        """Literal rules, most specific first: the first match wins, so with `Total`
+        and `Total due` the longer target must be tried first or it never fires."""
+        return sorted(spec.replacements.items(), key=lambda rule: len(rule[0]), reverse=True)
 
     def _build_merged_text(
         self,
@@ -1048,15 +1064,20 @@ class PDFModifier:
         spans: list[dict[str, Any]],
         spec: ReplacementSpec,
         matched_span_ids: set[int],
+        rules: list[tuple[str, str]] | None = None,
     ) -> list[dict[str, Any]]:
-        """Match replacement targets across concatenated span texts."""
+        """Match replacement targets across concatenated span texts.
+
+        `rules` restricts the match to those rules; by default every rule, in the
+        caller's order.
+        """
         items: list[dict[str, Any]] = []
 
         merged, span_ranges = self._build_merged_text(spans)
         if not merged.strip():
             return items
 
-        for target, replacement_raw in spec.replacements.items():
+        for target, replacement_raw in rules if rules is not None else spec.replacements.items():
             matches = self._find_matches_in_merged(merged, target, spec)
 
             for m_start, m_end in matches:
