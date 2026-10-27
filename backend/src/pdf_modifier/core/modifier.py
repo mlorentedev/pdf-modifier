@@ -872,7 +872,14 @@ class PDFModifier:
         text = span["text"].strip()
         original = span["text"]
 
-        for target, replacement_raw in spec.replacements.items():
+        rules = list(spec.replacements.items())
+        if not spec.use_regex:
+            # The first match wins, so with `Total` and `Total due` the more specific
+            # literal must be tried first or it never fires. Regex order is the
+            # caller's: pattern length says nothing about specificity.
+            rules.sort(key=lambda rule: len(rule[0]), reverse=True)
+
+        for target, replacement_raw in rules:
             match_found = False
             if spec.use_regex and spec.compiled_patterns:
                 pattern = spec.compiled_patterns[target]
@@ -925,10 +932,10 @@ class PDFModifier:
             for line in block["lines"]:
                 for span in line["spans"]:
                     item = self._match_single_span(span, spec)
+                    # No early exit: a sibling span on the same line may match too.
                     if item:
                         items.append(item)
                         matched_span_ids.add(id(span))
-                        break
 
         # Pass 2: cross-span matching
         for block in blocks:
