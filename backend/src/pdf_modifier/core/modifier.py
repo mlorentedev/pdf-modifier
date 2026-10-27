@@ -1137,8 +1137,8 @@ class PDFModifier:
             for other_rect, ox0, ox1, other_text in [*survivors, *planned[i + 1 :]]:
                 if not other_text.strip() or not PDFModifier._same_line(rect, other_rect):
                     continue
-                if ox0 < x1 - OVERPRINT_TOLERANCE and ox1 > x0 + OVERPRINT_TOLERANCE:
-                    overlap = min(x1, ox1) - max(x0, ox0)
+                overlap = min(x1, ox1) - max(x0, ox0)
+                if overlap > OVERPRINT_TOLERANCE:
                     logger.warning(
                         "Replacement at (%.1f, %.1f) overprints %.1fpt of text on its line",
                         x0,

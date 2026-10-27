@@ -99,3 +99,36 @@ def test_overprint_log_carries_no_document_text(
     logged = [r.getMessage() for r in caplog.records if "overprint" in r.getMessage()]
     assert logged
     assert not [m for m in logged if "12345" in m or "longer label" in m]
+
+
+def _item(**overrides: object) -> dict[str, object]:
+    item: dict[str, object] = {
+        "bbox": (50.0, 88.0, 100.0, 103.0),
+        "origin": (50.0, 100.0),
+        "text": "A much longer label",
+        "fontname": "helv",
+        "fontfile": None,
+        "size": FONTSIZE,
+    }
+    item.update(overrides)
+    return item
+
+
+def test_an_unreadable_font_file_skips_the_check_instead_of_failing(tmp_path: Path) -> None:
+    """PyMuPDF raises FzErrorBase subclasses for corrupt and missing font files."""
+    corrupt = tmp_path / "corrupt.ttf"
+    corrupt.write_bytes(b"not a font")
+    modifier = PDFModifier("in.pdf", "out.pdf")
+
+    assert modifier._planned_extent(_item(fontfile=str(corrupt))) is None
+    assert modifier._planned_extent(_item(fontfile=str(tmp_path / "missing.ttf"))) is None
+
+
+def test_overlap_under_the_tolerance_is_not_reported() -> None:
+    """A survivor narrower than the tolerance is covered by less than it, so no warning."""
+    modifier = PDFModifier("in.pdf", "out.pdf")
+    sliver = {"bbox": (60.0, 88.0, 60.3, 103.0), "chars": [{"c": "|"}]}
+
+    modifier._warn_on_overprint([sliver], [_item()])
+
+    assert modifier._warnings == []
