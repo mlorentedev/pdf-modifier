@@ -7,6 +7,8 @@ on:
     branches: [master]
     paths:
       - "backend/**"
+      # A change to the gate must run the gate.
+      - ".github/workflows/mutation.yml"
   workflow_dispatch:
 
 permissions:
