@@ -35,7 +35,7 @@ jobs:
         run: |
           uv venv
           uv pip install -e ".[dev]"
-          uv pip install mutmut
+          uv pip install mutmut==3.7.0
 
       - name: Run mutmut
         working-directory: backend
@@ -50,5 +50,23 @@ jobs:
 
       - name: Check mutation score
         working-directory: backend
+        # A ratchet, not the goal: AGENTS.md targets 70%, the suite measured 64.6%
+        # when this gate started. Raise the floor as surviving mutants are killed;
+        # never lower it to make a PR pass. Mutants without tests are excluded.
+        env:
+          MUTATION_SCORE_FLOOR: "64"
         run: |
-          uv run mutmut results || true
+          uv run mutmut export-cicd-stats
+          python3 - <<'PY'
+          import json, os, sys
+          s = json.load(open("mutants/mutmut-cicd-stats.json"))
+          caught = s["killed"] + s["timeout"]
+          tested = caught + s["survived"] + s["suspicious"]
+          if tested == 0:
+              sys.exit("no tested mutants: the run did not complete")
+          score = 100 * caught / tested
+          floor = float(os.environ["MUTATION_SCORE_FLOOR"])
+          print(f"mutation score {score:.1f}% ({caught}/{tested}), floor {floor:g}%, stats {s}")
+          if score < floor:
+              sys.exit(f"mutation score {score:.1f}% is below the {floor:g}% floor")
+          PY
