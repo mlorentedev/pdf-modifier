@@ -183,6 +183,20 @@ tests/
     fi
 ```
 
+## Amendment (2026-10-27): the minimum is enforced as a ratchet
+
+The CI step sketched above was never wired in: the real workflow ended its score
+step in `|| true`, so no minimum was enforced. When enforcement started (#223) the
+suite measured 64.6%, below the 70% minimum. Turning the gate on at 70% would have
+made the mutation job red on every backend PR, so the gate starts as a ratchet:
+
+- `.github/workflows/mutation.yml` fails below `MUTATION_SCORE_FLOOR`, which starts
+  at 64, the measured baseline rounded down.
+- Score = (killed + timeout) / (killed + timeout + survived + suspicious). Mutants
+  with no tests are excluded.
+- The floor is raised as surviving mutants are killed and is never lowered to let a
+  PR pass. The 70% minimum and the 80% target above still stand as the destination.
+
 ## Consequences
 
 - Tests catch regressions early
