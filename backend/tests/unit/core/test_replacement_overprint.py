@@ -11,6 +11,7 @@ objects by a colour change -- the shape of any key-value line.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import fitz
@@ -20,6 +21,8 @@ from pdf_modifier.core.models import ReplacementSpec
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 LABEL_ORIGIN = (50.0, 100.0)
 FONTSIZE = 12.0
@@ -71,3 +74,28 @@ def test_replacement_keeps_neighbour_text(tmp_path: Path) -> None:
     with fitz.open(str(tmp_path / "out.pdf")) as doc:
         text = doc[0].get_text()
     assert "12345" in text
+
+
+def test_two_replacements_that_collide_warn(tmp_path: Path) -> None:
+    """Both originals are redacted, so neither is in the surviving text to collide with."""
+    source = _label_value_pdf(tmp_path / "in.pdf")
+    result = PDFModifier(str(source), str(tmp_path / "out.pdf")).process(
+        ReplacementSpec(replacements={"Short": "A much longer label", ": 12345": ": 67890"})
+    )
+
+    overprint = [w for w in result.warnings if "overprint" in w]
+    assert len(overprint) == 1
+    assert "A much longer label" in overprint[0]
+    assert ": 67890" in overprint[0]
+
+
+def test_overprint_log_carries_no_document_text(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The returned warning names the text; the application log must not."""
+    with caplog.at_level(logging.WARNING, logger="pdf_modifier.core.modifier"):
+        _run(tmp_path, "A much longer label")
+
+    logged = [r.getMessage() for r in caplog.records if "overprint" in r.getMessage()]
+    assert logged
+    assert not [m for m in logged if "12345" in m or "longer label" in m]

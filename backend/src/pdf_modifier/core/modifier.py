@@ -58,6 +58,10 @@ GLYPH_COVERAGE_FLOOR: float = 0.12
 # redactor and read as unreached here.
 GLYPH_REMOVAL_FRACTION: float = 0.10
 
+# A replacement's ink may touch its neighbour's box by a hair; only overlap wider
+# than this, in points, is reported as an overprint.
+OVERPRINT_TOLERANCE: float = 0.5
+
 
 class PDFModifier:
     """
@@ -1109,27 +1113,57 @@ class PDFModifier:
         the caller did not ask to change -- but never left silent.
 
         `remaining` is read after the redactions, so every span in it is text that
-        survives the run; the targets themselves are already gone.
+        survives the run. The targets are already gone from it, which is why the
+        planned replacements are also checked against EACH OTHER: two neighbours
+        that are both replaced collide without either being in `remaining`.
+
+        The returned warning names the text so the caller can find the line; the
+        log carries only geometry, because a neighbour is as likely to be an
+        account number as a label.
         """
-        # A glyph box may touch its neighbour's by a hair; only real ink overlap counts.
-        tolerance = 0.5
-        for item in items:
-            rect = fitz.Rect(item["bboxes"][0] if "bboxes" in item else item["bbox"])
-            x0 = item["origin"][0]
-            x1 = x0 + PDFModifier._replacement_width(item)
-            for span in remaining:
-                other = fitz.Rect(span["bbox"])
-                # rawdict spans carry characters, not a text string.
-                text = "".join(char["c"] for char in span.get("chars", []))
-                if not text.strip() or not PDFModifier._same_line(rect, other):
+        planned = [extent for extent in (self._planned_extent(item) for item in items) if extent]
+        for i, (rect, x0, x1, text) in enumerate(planned):
+            # rawdict spans carry characters, not a text string.
+            survivors = (
+                (
+                    fitz.Rect(span["bbox"]),
+                    span["bbox"][0],
+                    span["bbox"][2],
+                    "".join(char["c"] for char in span.get("chars", [])),
+                )
+                for span in remaining
+            )
+            # Each pair of replacements once: only the ones planned after this one.
+            for other_rect, ox0, ox1, other_text in [*survivors, *planned[i + 1 :]]:
+                if not other_text.strip() or not PDFModifier._same_line(rect, other_rect):
                     continue
-                if other.x0 < x1 - tolerance and other.x1 > x0 + tolerance:
-                    msg = (
-                        f"Replacement '{item['text']}' is {x1 - other.x0:.1f}pt too wide "
-                        f"for its slot and will overprint '{text}' on the same line"
+                if ox0 < x1 - OVERPRINT_TOLERANCE and ox1 > x0 + OVERPRINT_TOLERANCE:
+                    overlap = min(x1, ox1) - max(x0, ox0)
+                    logger.warning(
+                        "Replacement at (%.1f, %.1f) overprints %.1fpt of text on its line",
+                        x0,
+                        rect.y1,
+                        overlap,
                     )
-                    logger.warning(msg)
-                    self._warnings.append(msg)
+                    self._warnings.append(
+                        f"Replacement '{text}' overlaps '{other_text}' by {overlap:.1f}pt "
+                        "and will overprint it on the same line"
+                    )
+
+    def _planned_extent(self, item: dict[str, Any]) -> tuple[fitz.Rect, float, float, str] | None:
+        """Line box, horizontal ink extent and text of a replacement before it is drawn.
+
+        None when the width cannot be measured: the check is diagnostic, so a font
+        it cannot measure skips the check instead of failing the run.
+        """
+        try:
+            width = PDFModifier._replacement_width(item)
+        except (ValueError, RuntimeError, fitz.mupdf.FzErrorBase) as e:
+            logger.debug("Overprint check skipped, width unmeasurable: %s", e)
+            return None
+        rect = fitz.Rect(item["bboxes"][0] if "bboxes" in item else item["bbox"])
+        x0 = float(item["origin"][0])
+        return rect, x0, x0 + width, str(item["text"])
 
     def _insert_link(
         self,
