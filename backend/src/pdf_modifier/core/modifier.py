@@ -557,6 +557,7 @@ class PDFModifier:
         # image masking from carving a hole where text sat on an image.
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
 
+        self._warn_on_overprint(PDFModifier._text_spans(page), items)
         for item in items:
             self._insert_replacement(page, item)
 
@@ -1076,6 +1077,53 @@ class PDFModifier:
 
         return items
 
+    @staticmethod
+    def _replacement_width(item: dict[str, Any]) -> float:
+        """Advance width of the replacement text in the font it will be drawn with."""
+        fontfile = item.get("fontfile")
+        if fontfile:
+            font = fitz.Font(fontfile=fontfile)
+            return float(font.text_length(item["text"], fontsize=item["size"]))
+        # `fitz.Font` rejects the Base14 short aliases (`CoBo`, `HeBo`) that
+        # `insert_text` accepts; `get_text_length` takes the same names.
+        return float(
+            fitz.get_text_length(item["text"], fontname=item["fontname"], fontsize=item["size"])
+        )
+
+    def _warn_on_overprint(
+        self, remaining: list[dict[str, Any]], items: list[dict[str, Any]]
+    ) -> None:
+        """Warn when a replacement will be drawn over text that stays on the page.
+
+        Replacement is in place: the new text starts at the old origin and nothing
+        downstream moves. A value wider than the gap to the next object on the same
+        baseline therefore prints on top of it and the line becomes unreadable. Not
+        fixed by shrinking the font or shifting the neighbour -- both rewrite text
+        the caller did not ask to change -- but never left silent.
+
+        `remaining` is read after the redactions, so every span in it is text that
+        survives the run; the targets themselves are already gone.
+        """
+        # A glyph box may touch its neighbour's by a hair; only real ink overlap counts.
+        tolerance = 0.5
+        for item in items:
+            rect = fitz.Rect(item["bboxes"][0] if "bboxes" in item else item["bbox"])
+            x0 = item["origin"][0]
+            x1 = x0 + PDFModifier._replacement_width(item)
+            for span in remaining:
+                other = fitz.Rect(span["bbox"])
+                # rawdict spans carry characters, not a text string.
+                text = "".join(char["c"] for char in span.get("chars", []))
+                if not text.strip() or not PDFModifier._same_line(rect, other):
+                    continue
+                if other.x0 < x1 - tolerance and other.x1 > x0 + tolerance:
+                    msg = (
+                        f"Replacement '{item['text']}' is {x1 - other.x0:.1f}pt too wide "
+                        f"for its slot and will overprint '{text}' on the same line"
+                    )
+                    logger.warning(msg)
+                    self._warnings.append(msg)
+
     def _insert_link(
         self,
         page: fitz.Page,
@@ -1084,12 +1132,7 @@ class PDFModifier:
     ) -> None:
         """Insert a hyperlink for the replacement text."""
         try:
-            fontname = item["fontname"]
-            fontfile = item.get("fontfile")
-            if fontfile:
-                fontname = f"__custom_{Path(fontfile).stem}__"
-            font = fitz.Font(fontname=fontname, fontfile=fontfile)
-            text_width = font.text_length(item["text"], fontsize=item["size"])
+            text_width = PDFModifier._replacement_width(item)
             x0 = item["origin"][0]
             y_baseline = item["origin"][1]
             link_rect = fitz.Rect(
