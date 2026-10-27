@@ -135,7 +135,7 @@ Fallback on: 429, 404, 5xx. Fail fast on: 400, 401.
 
 - **Framework**: pytest + pytest-cov
 - **Coverage**: ≥80% global, ≥90% critical paths
-- **Mutation**: mutmut, score ≥70%
+- **Mutation**: mutmut, score ≥70% (target). CI enforces a ratcheting floor (`MUTATION_SCORE_FLOOR` in `.github/workflows/mutation.yml`); raise it as mutants are killed, never lower it.
 - **AI mocking**: NullAIClient for unit tests, never real API calls
 - **File I/O**: `tmp_path` fixture, never write to real project dir
 - **Naming**: `test_<unit>_<scenario>_<expected>`
