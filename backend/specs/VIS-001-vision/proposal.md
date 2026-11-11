@@ -10,7 +10,7 @@ feature: Vision and OCR Capabilities
 
 ## What
 
-Add vision-based capabilities using mimo-v2.5 (omnimodal model) to: OCR scanned PDFs without text layers, detect signatures and seals, compare PDFs visually, and analyze visual elements.
+Add vision-based capabilities using mimo-v2.6-flash (the router's vision default) to: OCR scanned PDFs without text layers, detect signatures and seals, compare PDFs visually, and analyze visual elements.
 
 ## Why
 
@@ -23,7 +23,7 @@ Add vision-based capabilities using mimo-v2.5 (omnimodal model) to: OCR scanned 
 
 ### In Scope
 - PDF to image conversion (fitz render)
-- mimo-v2.5 vision endpoint for OCR
+- mimo-v2.6-flash vision endpoint for OCR
 - Signature/seal detection
 - PDF comparison (visual diff)
 - Frontend integration
@@ -37,11 +37,11 @@ Add vision-based capabilities using mimo-v2.5 (omnimodal model) to: OCR scanned 
 1. [ ] Scanned PDFs are OCR'd successfully
 2. [ ] Signatures and seals are detected
 3. [ ] PDF comparison shows visual differences
-4. [ ] Vision uses mimo-v2.5 model
+4. [ ] Vision uses mimo-v2.6-flash model
 5. [ ] Image conversion produces quality output
 
 ## Technical Notes
 
-- mimo-v2.5: 310B/15B, omnimodal (text+image+audio), 1M context
+- mimo-v2.6-flash: 1M context, the router's vision default (`src/pdf_modifier/ai/router.py`). It replaced mimo-v2.5, which NaN retired on 2026-09-30
 - Use `image_url` content type for vision input
 - Convert PDF pages to PNG at 150 DPI for OCR

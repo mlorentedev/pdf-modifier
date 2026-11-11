@@ -86,7 +86,7 @@ created: "2026-10-12"
 
 ## PR3 — model canary  (own branch, own PR)
 
-- [ ] [P] [AC2] Port `harness/model-map.json`, `harness/model-pins.json` and `harness/nan-quotas.json`, with `model-pins.json` re-derived for this repo's pin sites (it names files and spellings, so it is adapted, not copied).
+- [ ] [P] [AC2] Port `harness/model-map.json` and `harness/model-pins.json` (dotfiles deleted `harness/nan-quotas.json` when NaN moved to one credit pool, mlorentedev/dotfiles#3272), with `model-pins.json` re-derived for this repo's pin sites (it names files and spellings, so it is adapted, not copied).
 - [ ] [P] [AC6] Port `scripts/model-canary.sh` (118 lines).
 - [ ] [AC6] Add `.github/workflows/model-canary.yml` (daily cron + `workflow_dispatch`), building `dotf` from the `dotfiles` checkout since this repo has no `cli/`.
 - [ ] [AC2] [AC6] Plant a dead model id in `harness/model-map.json`, run `dotf secrets run --only NAN_API_KEY -- dotf harness canary`, and record: **exit non-zero** and exactly one labelled issue rewritten. Revert the plant.

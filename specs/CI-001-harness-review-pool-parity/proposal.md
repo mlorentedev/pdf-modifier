@@ -25,7 +25,7 @@ Bring this repo's review harness to parity with `dotfiles` `main` (`e31c4ee4`), 
 
 1. **The pool describes models that answer, in the shape the gate reads.** `harness/reviewer-pool.json` gains `vendor` on every entry, legal `signs` values, the `mimo-v2.5` successor, the two SSOT members admitted 2026-08-29, and the two Anthropic members (`signs: second`, `signs: fallback`). After this, `dotf spec review` can launch a second signature and a recorded fallback here, and `dotf spec archive` refuses an Anthropic-only signature.
 2. **CI reviews through the pool, across two providers.** `.pr_agent.toml` plus four `scripts/pr-agent-*.sh` replace the hardcoded `CONFIG__MODEL` with a weighted draw over members that answered a preflight probe. A PR reaching `pr_agent_risk.min_changed_lines` (1500) or carrying `deep-review` reviews first on the `route: risk` member. With the Anthropic secret absent the draw is NaN-only and the job summary says why; the steps do not fail.
-3. **A retirement is found before a PR finds it.** `harness/model-map.json`, `harness/model-pins.json`, `harness/nan-quotas.json`, `scripts/model-canary.sh` and `.github/workflows/model-canary.yml` send one minimal call a day to every bound model and keep exactly one labelled issue in step with the result.
+3. **A retirement is found before a PR finds it.** `harness/model-map.json`, `harness/model-pins.json`, `scripts/model-canary.sh` and `.github/workflows/model-canary.yml` send one minimal call a day to every bound model and keep exactly one labelled issue in step with the result.
 
 Plus the enabling change in `dotfiles`: `ci:mlorentedev/pdf-modifier-mcp` joins `PR_AGENT_ANTHROPIC_API_KEY`'s consumers (owner-approved spend), then `dotf secrets sync ci --repo mlorentedev/pdf-modifier-mcp`.
 

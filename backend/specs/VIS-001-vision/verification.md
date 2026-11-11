@@ -12,7 +12,7 @@ created: "2026-06-19"
 ### Unit Tests
 - [ ] PDF to image conversion produces valid PNG
 - [ ] Base64 encoding returns correct data URI
-- [ ] OCR endpoint uses mimo-v2.5 model
+- [ ] OCR endpoint uses mimo-v2.6-flash model
 - [ ] Signature detection returns positions
 
 ### Integration Tests

@@ -72,7 +72,7 @@ AUD-001 ───────┴───────┴────────
 
 | Model | Used In | Purpose |
 |---|---|---|
-| mimo-v2.5 | AI-001, VIS-001 | Vision, tool calling, reasoning |
+| mimo-v2.6-flash | AI-001, VIS-001 | Vision, tool calling, reasoning |
 | qwen3.6 | AI-001, ML-001 | Translation, summary, fast tasks |
 | gemma4 | AI-001 | Fallback model |
 | qwen3-embedding | ML-001 | Semantic search embeddings |
