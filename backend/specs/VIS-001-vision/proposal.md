@@ -42,6 +42,6 @@ Add vision-based capabilities using mimo-v2.6-flash (the router's vision default
 
 ## Technical Notes
 
-- mimo-v2.6-flash: 1M context, the router's vision default (`src/pdf_modifier/ai/router.py`). It replaced mimo-v2.5, which NaN retired on 2026-09-30
+- mimo-v2.6-flash: 1M context, the router's vision default (`backend/src/pdf_modifier/ai/router.py`). It replaced mimo-v2.5, which NaN retired on 2026-09-30
 - Use `image_url` content type for vision input
 - Convert PDF pages to PNG at 150 DPI for OCR
