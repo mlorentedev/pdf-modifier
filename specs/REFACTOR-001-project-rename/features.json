@@ -44,7 +44,7 @@
   {
     "id": "REFACTOR-001-project-rename-f7",
     "behavior": "AC6: the backend and frontend suites and the lessons guard are green under the new name.",
-    "verification": "make check && make check-frontend && bash scripts/check-lessons.sh",
+    "verification": "make check && make check-frontend && dotf lessons fmt --check --dir docs/lessons",
     "state": "pending",
     "evidence": ""
   },

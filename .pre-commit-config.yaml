@@ -62,9 +62,11 @@ repos:
 
   - repo: local
     hooks:
-      - id: check-lessons
-        name: Lessons numbering and index
-        entry: scripts/check-lessons.sh
-        language: script
+      # dotf is the fleet's tool; a clone without it fails this hook rather than
+      # skipping it.
+      - id: lessons-fmt
+        name: Check docs/lessons format and that no index is committed
+        entry: dotf lessons fmt --check --dir docs/lessons
+        language: system
         pass_filenames: false
         files: ^docs/lessons/
