@@ -11,4 +11,4 @@ tags: [pdf-modifier-mcp, lessons, pointer]
 
 > **Notice:** Lessons have been modularized to optimize token consumption and prevent monolithic growth.
 >
-> 👉 **Lessons:** [docs/lessons/](lessons/). Run `dotf lessons index` for the rendered index.
+> 👉 **Lessons:** [docs/lessons/](lessons/). [dotf](https://github.com/mlorentedev/dotfiles) renders an index of them with `dotf lessons index`.
