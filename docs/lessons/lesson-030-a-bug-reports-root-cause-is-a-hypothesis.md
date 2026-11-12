@@ -1,7 +1,8 @@
 ---
-id: lesson-030-a-bug-reports-root-cause-is-a-hypothesis
+id: "lesson-030-a-bug-reports-root-cause-is-a-hypothesis"
 type: lesson
 status: active
+title: "A bug report's root cause is a hypothesis, and a fixture decides whether it can be tested"
 created: "2026-10-26"
 owner: manu
 tags: [pdf-modifier, lesson, verification, testing, triage]

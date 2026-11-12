@@ -1,7 +1,8 @@
 ---
-id: lesson-001-decoupled-file-based-logging-for-mcp-servers
+id: "lesson-001-decoupled-file-based-logging-for-mcp-servers"
 type: lesson
 status: active
+title: "Decoupled File-based Logging for MCP Servers"
 created: "2026-03-07"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, mcp, observability, logging, cli]

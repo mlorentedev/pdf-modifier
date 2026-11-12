@@ -1,7 +1,8 @@
 ---
-id: lesson-014-redact-fill-white-overwrites-pdf-background
+id: "lesson-014-redact-fill-white-overwrites-pdf-background"
 type: lesson
 status: active
+title: "`add_redact_annot(fill=(1,1,1))` overwrites a vector-drawn PDF background with white"
 created: "2026-09-07"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, pymupdf, redact, background, fonts]

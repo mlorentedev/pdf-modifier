@@ -1,7 +1,8 @@
 ---
-id: lesson-028-a-guard-you-cannot-check-is-a-guard-you-cannot-trust
+id: "lesson-028-a-guard-you-cannot-check-is-a-guard-you-cannot-trust"
 type: lesson
 status: active
+title: "A guard that predicts is a guard you cannot check; verify the consequence instead"
 created: "2026-10-13"
 owner: manu
 tags: [pdf-modifier, lesson, verification, guards, consequence]

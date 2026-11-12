@@ -1,7 +1,8 @@
 ---
-id: lesson-016-pymupdf-preserves-metadata-on-save-make-it-explicit
+id: "lesson-016-pymupdf-preserves-metadata-on-save-make-it-explicit"
 type: lesson
 status: active
+title: "PyMuPDF preserves metadata on `save()` — make preservation an explicit option, not an assumption"
 created: "2026-09-22"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, pymupdf, metadata, pdf]

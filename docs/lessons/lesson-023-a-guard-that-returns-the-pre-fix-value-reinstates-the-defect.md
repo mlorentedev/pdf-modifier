@@ -1,7 +1,8 @@
 ---
-id: lesson-023-a-guard-that-returns-the-pre-fix-value-reinstates-the-defect
+id: "lesson-023-a-guard-that-returns-the-pre-fix-value-reinstates-the-defect"
 type: lesson
 status: active
+title: "A guard that falls back to the value from before the fix reinstates the defect — silently"
 created: "2026-10-13"
 owner: manu
 tags: [pdf-modifier, lesson, guards, fallbacks, testing, verification]

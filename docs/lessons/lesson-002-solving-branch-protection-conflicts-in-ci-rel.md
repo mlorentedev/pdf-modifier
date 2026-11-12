@@ -1,7 +1,8 @@
 ---
-id: lesson-002-solving-branch-protection-conflicts-in-ci-rel
+id: "lesson-002-solving-branch-protection-conflicts-in-ci-rel"
 type: lesson
 status: active
+title: "Solving Branch Protection Conflicts in CI Releases"
 created: "2026-03-07"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci-cd, release-please, github-actions, branch-protection]

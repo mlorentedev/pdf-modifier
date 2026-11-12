@@ -1,7 +1,8 @@
 ---
-id: lesson-004-release-please-prs-need-manual-ci-trigger
+id: "lesson-004-release-please-prs-need-manual-ci-trigger"
 type: lesson
 status: active
+title: "Release-Please PRs Need Manual CI Trigger"
 created: "2026-03-13"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci-cd, release-please, github-actions]

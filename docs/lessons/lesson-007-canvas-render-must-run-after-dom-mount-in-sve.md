@@ -1,7 +1,8 @@
 ---
-id: lesson-007-canvas-render-must-run-after-dom-mount-in-sve
+id: "lesson-007-canvas-render-must-run-after-dom-mount-in-sve"
 type: lesson
 status: active
+title: "Canvas render must run after DOM mount in Svelte {#if}"
 created: "2026-08-04"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, frontend, svelte, canvas, lifecycle]
