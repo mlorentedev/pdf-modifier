@@ -10,7 +10,7 @@ feature: AI-Powered Document Detection
 
 ## What
 
-Add AI capabilities to detect document fields, classify document types, and redact PII automatically using NaN Cloud models (mimo-v2.5 for vision/tool calling, qwen3.6 for fast tasks).
+Add AI capabilities to detect document fields, classify document types, and redact PII automatically using NaN Cloud models (mimo-v2.6-flash for vision/tool calling, qwen3.6 for fast tasks).
 
 ## Why
 

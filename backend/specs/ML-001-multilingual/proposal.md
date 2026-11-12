@@ -25,7 +25,7 @@ Add translation, semantic search, summarization, and structured data extraction 
 - Translation endpoint (qwen3.6)
 - Semantic search endpoint (qwen3-embedding + rerank)
 - Summarization endpoint (qwen3.6)
-- Structured extraction endpoint (mimo-v2.5 tool calling)
+- Structured extraction endpoint (mimo-v2.6-flash tool calling)
 - Frontend integration
 
 ### Out of Scope

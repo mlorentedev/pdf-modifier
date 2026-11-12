@@ -38,14 +38,14 @@ For each task: RED (write failing test) → GREEN (implement) → REFACTOR (clea
 - [ ] **RED:** Write `test_ocr_with_text_layer_returns_error`
 - [ ] **GREEN:** Implement `POST /api/ai/{session_id}/ocr`
 - [ ] **GREEN:** Convert PDF pages to images
-- [ ] **GREEN:** Send images to mimo-v2.5 for OCR
+- [ ] **GREEN:** Send images to mimo-v2.6-flash for OCR
 - [ ] **GREEN:** Return extracted text per page
 - [ ] **REFACTOR:** Handle multi-page PDFs in batches
 
 ### T2.2: Signature Detection Endpoint
 - [ ] **RED:** Write `test_detect_signatures_returns_positions`
 - [ ] **GREEN:** Implement `POST /api/ai/{session_id}/detect-signatures`
-- [ ] **GREEN:** Send PDF images to mimo-v2.5
+- [ ] **GREEN:** Send PDF images to mimo-v2.6-flash
 - [ ] **GREEN:** Return signature positions and confidence
 - [ ] **REFACTOR:** Add bounding box coordinates
 
@@ -53,7 +53,7 @@ For each task: RED (write failing test) → GREEN (implement) → REFACTOR (clea
 - [ ] **RED:** Write `test_compare_pdfs_returns_differences`
 - [ ] **GREEN:** Implement `POST /api/ai/compare`
 - [ ] **GREEN:** Accept two session IDs
-- [ ] **GREEN:** Send both PDFs to mimo-v2.5
+- [ ] **GREEN:** Send both PDFs to mimo-v2.6-flash
 - [ ] **GREEN:** Return list of differences
 - [ ] **REFACTOR:** Support side-by-side view
 

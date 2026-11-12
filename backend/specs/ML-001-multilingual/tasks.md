@@ -66,7 +66,7 @@ For each task: RED (write failing test) → GREEN (implement) → REFACTOR (clea
 - [ ] **RED:** Write `test_extract_with_tool_calling`
 - [ ] **GREEN:** Implement `POST /api/ai/{session_id}/extract`
 - [ ] **GREEN:** Accept schema parameter
-- [ ] **GREEN:** Use mimo-v2.5 with tool calling
+- [ ] **GREEN:** Use mimo-v2.6-flash with tool calling
 - [ ] **GREEN:** Return structured JSON
 - [ ] **REFACTOR:** Add schema validation
 
