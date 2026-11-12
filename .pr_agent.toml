@@ -40,6 +40,10 @@ require_tests_review = true
 require_security_review = true
 persistent_comment = true
 final_update_message = false
+# Off as the old workflow had it: with the finding state on, PR-Agent's YAML
+# parse drift makes every re-run after a push post a standalone comment instead
+# of updating the Guide (#152, #153). The shared workflow does not set it.
+persistent_finding_state = false
 
 # No "compliance sweep" preamble: asked for on every review and delivered once in
 # sixteen at dotfiles (#1072, recommendation was deletion). An instruction ignored 94 %
