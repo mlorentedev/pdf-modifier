@@ -1,7 +1,8 @@
 ---
-id: lesson-027-a-refusal-is-not-harmless-when-the-refusal-is-the-protection
+id: "lesson-027-a-refusal-is-not-harmless-when-the-refusal-is-the-protection"
 type: lesson
 status: active
+title: "A refusal is not harmless when the refusal IS the protection"
 created: "2026-10-13"
 owner: manu
 tags: [pdf-modifier, lesson, guards, refusals, verification, measurement]

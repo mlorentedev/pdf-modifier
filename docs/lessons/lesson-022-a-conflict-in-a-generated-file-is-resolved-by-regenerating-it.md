@@ -1,7 +1,8 @@
 ---
-id: lesson-022-a-conflict-in-a-generated-file-is-resolved-by-regenerating-it
+id: "lesson-022-a-conflict-in-a-generated-file-is-resolved-by-regenerating-it"
 type: lesson
 status: active
+title: "A conflict in a generated file is resolved by regenerating it, not by patching the side that looks like a version bump"
 created: "2026-10-13"
 owner: manu
 tags: [pdf-modifier, lesson, release, release-please, conflict-resolution]

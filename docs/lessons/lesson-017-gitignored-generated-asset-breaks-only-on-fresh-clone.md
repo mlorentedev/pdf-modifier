@@ -1,7 +1,8 @@
 ---
-id: lesson-017-gitignored-generated-asset-breaks-only-on-fresh-clone
+id: "lesson-017-gitignored-generated-asset-breaks-only-on-fresh-clone"
 type: lesson
 status: active
+title: "A gitignored generated asset with no generator breaks only on a fresh clone"
 created: "2026-10-06"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, onboarding, frontend, pdfjs, reproducibility]

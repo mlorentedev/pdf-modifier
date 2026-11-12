@@ -1,7 +1,8 @@
 ---
-id: lesson-015-pr-agent-empty-reviewable-diff-misdiagnosed-as-concurrency
+id: "lesson-015-pr-agent-empty-reviewable-diff-misdiagnosed-as-concurrency"
 type: lesson
 status: active
+title: "A lockfile-only PR makes the review guard fail permanently — misdiagnosed as NaN concurrency"
 created: "2026-09-22"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci, pr-agent, review, lockfiles, dependabot]

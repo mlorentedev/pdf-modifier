@@ -1,7 +1,8 @@
 ---
-id: lesson-019-declaring-an-unobserved-review-marker-widens-the-gate
+id: "lesson-019-declaring-an-unobserved-review-marker-widens-the-gate"
 type: lesson
 status: active
+title: "A reviewer marker declared without a measurement widens the gate; omitting it only fails closed"
 created: "2026-10-12"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci, pr-agent, review, attestation, gates]

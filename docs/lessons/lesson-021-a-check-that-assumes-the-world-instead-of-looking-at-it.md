@@ -1,7 +1,8 @@
 ---
-id: lesson-021-a-check-that-assumes-the-world-instead-of-looking-at-it
+id: "lesson-021-a-check-that-assumes-the-world-instead-of-looking-at-it"
 type: lesson
 status: active
+title: "Six times in one session, a check assumed something about the world instead of looking at it"
 created: "2026-10-13"
 owner: manu
 tags: [pdf-modifier, lesson, verification, guards, ci]

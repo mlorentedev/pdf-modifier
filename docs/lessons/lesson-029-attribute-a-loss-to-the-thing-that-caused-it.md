@@ -1,7 +1,8 @@
 ---
-id: lesson-029-attribute-a-loss-to-the-thing-that-caused-it
+id: "lesson-029-attribute-a-loss-to-the-thing-that-caused-it"
 type: lesson
 status: active
+title: "Attribute a loss to the thing that caused it, with the predicate that measures what happened"
 created: "2026-10-13"
 owner: manu
 tags: [pdf-modifier, lesson, verification, attribution, predicates]

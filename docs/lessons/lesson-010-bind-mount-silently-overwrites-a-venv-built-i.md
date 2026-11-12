@@ -1,7 +1,8 @@
 ---
-id: lesson-010-bind-mount-silently-overwrites-a-venv-built-i
+id: "lesson-010-bind-mount-silently-overwrites-a-venv-built-i"
 type: lesson
 status: active
+title: "Bind mount silently overwrites a venv built into the image"
 created: "2026-06-24"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, docker, compose, venv, bind-mount, debugging]

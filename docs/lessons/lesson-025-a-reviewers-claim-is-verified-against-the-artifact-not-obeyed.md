@@ -1,7 +1,8 @@
 ---
-id: lesson-025-a-reviewers-claim-is-verified-against-the-artifact-not-obeyed
+id: "lesson-025-a-reviewers-claim-is-verified-against-the-artifact-not-obeyed"
 type: lesson
 status: active
+title: "A reviewer's claim is verified against the artifact before it is obeyed — and before it is dismissed"
 created: "2026-10-13"
 owner: manu
 tags: [lesson, review, verification, triage, process]

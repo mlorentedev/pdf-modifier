@@ -1,7 +1,8 @@
 ---
-id: lesson-020-a-rename-guard-cannot-see-a-dead-distribution-lookup
+id: "lesson-020-a-rename-guard-cannot-see-a-dead-distribution-lookup"
 type: lesson
 status: active
+title: "A rename guard goes green while `import` still raises: presence guards cannot see a dead lookup"
 created: "2026-10-12"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, rename, packaging, guards, importlib-metadata]
