@@ -98,5 +98,17 @@
         "why": "Measured on #122 (chore(master): release 1.8.0): exactly these four paths, because release-please-config.json bumps the version in pyproject.toml and server.json under backend/ as well as writing the changelog there. Matched by DIFF SIGNATURE with set equality, never by author or branch — the release PR is authored by github-actions[bot] here, the same login PR-Agent posts under, so an author rule would be ambiguous, and a branch rule would let any branch named to match walk past the gate. The moment such a PR touches one more file the exemption stops applying, and it stops applying just as surely if one declared file is not touched. This is not 'small PRs need no review': a release commit mechanically restates commits that were each reviewed when they landed, and reporting `declined` on it says something false."
       }
     ]
+  },
+  "classification": {
+    "prefix": "Class: ",
+    "classes": [
+      "REAL",
+      "THEORETICAL",
+      "SPECULATIVE"
+    ],
+    "reviewers": [
+      "github-actions"
+    ],
+    "why": "A finding's class is read from a whole line equal to prefix + class, never parsed out of prose; a finding with no such line, or two that disagree, is unclassified and goes to a human. .pr_agent.toml asks the reviewer for exactly these lines in extra_instructions, with the paragraph shared by every repository that calls the ci-workflows pr-agent workflow. reviewers names PR-Agent (github-actions) only, because CodeRabbit writes its own severity format. Shape copied from dotfiles (TOOL-017)."
   }
 }
