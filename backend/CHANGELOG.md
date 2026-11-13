@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.10.2](https://github.com/mlorentedev/pdf-modifier/compare/v1.10.1...v1.10.2) (2026-11-13)
+
+
+### Documentation
+
+* **specs:** name mimo-v2.6-flash and drop the retired quota file ([#234](https://github.com/mlorentedev/pdf-modifier/issues/234)) ([4d3e070](https://github.com/mlorentedev/pdf-modifier/commit/4d3e070be49dae26f1609a0ad6873972db775bcb))
+
 ## [1.10.1](https://github.com/mlorentedev/pdf-modifier/compare/v1.10.0...v1.10.1) (2026-10-27)
 
 
