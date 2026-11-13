@@ -1,7 +1,8 @@
 ---
-id: lesson-006-docker-multi-stage-venv-shebangs-broken-acros
+id: "lesson-006-docker-multi-stage-venv-shebangs-broken-acros"
 type: lesson
 status: active
+title: "Docker multi-stage: venv shebangs broken across builder/runtime + COPY content semantics"
 created: "2026-06-24"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, docker, multi-stage, venv, windows-wsl, python]

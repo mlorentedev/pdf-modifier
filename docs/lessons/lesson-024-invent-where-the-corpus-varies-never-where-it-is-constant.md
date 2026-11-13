@@ -1,7 +1,8 @@
 ---
-id: lesson-024-invent-where-the-corpus-varies-never-where-it-is-constant
+id: "lesson-024-invent-where-the-corpus-varies-never-where-it-is-constant"
 type: lesson
 status: active
+title: "Invent where the corpus varies; never where it is constant"
 created: "2026-10-13"
 owner: manu
 tags: [lesson, testing, fixtures, synthetic-data, verification]

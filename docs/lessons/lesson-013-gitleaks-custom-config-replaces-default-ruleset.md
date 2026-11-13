@@ -1,7 +1,8 @@
 ---
-id: lesson-013-gitleaks-custom-config-replaces-default-ruleset
+id: "lesson-013-gitleaks-custom-config-replaces-default-ruleset"
 type: lesson
 status: active
+title: "A gitleaks config without `[extend]` runs with zero rules"
 created: "2026-08-08"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, security, gitleaks, pre-commit, ci]

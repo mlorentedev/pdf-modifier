@@ -32,7 +32,7 @@ created: "2026-10-12"
 - [ ] [AC2] **Slug-agnostic rewrite where the string is historical.** `harness/review-attestation.json` records a measurement taken with `gh api repos/mlorentedev/pdf-modifier-mcp/…`; the measurement is real and the slug was accurate when it was made. Rewrite the path as `<owner>/<repo>` rather than replacing it with the new slug, which would claim the measurement was taken on a name that did not exist yet.
 - [ ] [P] [AC4] Docs site: `site/astro.config.mjs`, `site/package.json` and the five `site/src/content/docs/**` files. Two non-obvious ones: `base: '/pdf-modifier-mcp'` is the **GitHub Pages project path**, which follows the repo slug, and the internal links `/pdf-modifier-mcp/getting-started/` must move with it or they 404 on the published site.
       Run: `cd site && npm install && npm run build`. Expected: **exit 0**.
-- [ ] [AC6] Full suite: `make check`, `make check-frontend`, `bash scripts/check-lessons.sh`. Expected: all green, coverage ≥ 80%.
+- [ ] [AC6] Full suite: `make check`, `make check-frontend`, `dotf lessons fmt --check --dir docs/lessons`. Expected: all green, coverage ≥ 80%.
 
 ## The vault project folder is coupled to the repo name
 

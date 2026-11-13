@@ -1,7 +1,8 @@
 ---
-id: lesson-011-gitignore-negation-patterns-match-paths-liter
+id: "lesson-011-gitignore-negation-patterns-match-paths-liter"
 type: lesson
 status: active
+title: ".gitignore negation patterns match paths literally, not by suffix"
 created: "2026-06-24"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, git, gitignore, ci, file-tracking]

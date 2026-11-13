@@ -1,7 +1,8 @@
 ---
-id: lesson-005-github-token-events-don-t-trigger-other-workf
+id: "lesson-005-github-token-events-don-t-trigger-other-workf"
 type: lesson
 status: active
+title: "GITHUB_TOKEN events don't trigger other workflows — release-please CI workaround"
 created: "2026-03-14"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, github-actions, release-please, ci, branch-protection, pattern]

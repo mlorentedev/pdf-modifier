@@ -1,7 +1,8 @@
 ---
-id: lesson-018-release-please-path-prefixed-outputs-skip-publish
+id: "lesson-018-release-please-path-prefixed-outputs-skip-publish"
 type: lesson
 status: active
+title: "release-please outputs are path-prefixed outside the root, so the publish jobs skipped silently for four releases"
 created: "2026-10-06"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci, release-please, github-actions, pypi, docker]

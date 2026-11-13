@@ -1,7 +1,8 @@
 ---
-id: lesson-009-pdf-js-v6-render-api-grouping-real-world-pdf-
+id: "lesson-009-pdf-js-v6-render-api-grouping-real-world-pdf-"
 type: lesson
 status: active
+title: "pdf.js v6 render API + grouping real-world PDF spans"
 created: "2026-08-06"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, frontend, pdfjs, svelte5, grouping, type3, canvas]

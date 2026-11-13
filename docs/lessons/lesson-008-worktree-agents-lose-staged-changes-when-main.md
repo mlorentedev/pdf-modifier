@@ -1,7 +1,8 @@
 ---
-id: lesson-008-worktree-agents-lose-staged-changes-when-main
+id: "lesson-008-worktree-agents-lose-staged-changes-when-main"
 type: lesson
 status: active
+title: "Worktree agents lose staged changes when main repo branch operations interfere"
 created: "2026-03-14"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, git, worktree, parallel-agents, pattern]

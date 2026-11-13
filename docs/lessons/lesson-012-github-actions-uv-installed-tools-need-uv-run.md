@@ -1,7 +1,8 @@
 ---
-id: lesson-012-github-actions-uv-installed-tools-need-uv-run
+id: "lesson-012-github-actions-uv-installed-tools-need-uv-run"
 type: lesson
 status: active
+title: "GitHub Actions: uv-installed tools need `uv run`, not bare names"
 created: "2026-06-24"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci, github-actions, uv, debugging]

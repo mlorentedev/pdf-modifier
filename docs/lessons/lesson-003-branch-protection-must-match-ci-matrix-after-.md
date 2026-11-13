@@ -1,7 +1,8 @@
 ---
-id: lesson-003-branch-protection-must-match-ci-matrix-after-
+id: "lesson-003-branch-protection-must-match-ci-matrix-after-"
 type: lesson
 status: active
+title: "Branch Protection Must Match CI Matrix After Python Version Bump"
 created: "2026-03-13"
 owner: manu
 tags: [pdf-modifier-mcp, lesson, ci-cd, github-actions, branch-protection, python]

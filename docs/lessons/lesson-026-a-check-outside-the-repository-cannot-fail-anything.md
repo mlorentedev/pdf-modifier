@@ -1,7 +1,8 @@
 ---
-id: lesson-026-a-check-outside-the-repository-cannot-fail-anything
+id: "lesson-026-a-check-outside-the-repository-cannot-fail-anything"
 type: lesson
 status: active
+title: "A check that lives outside the repository cannot fail anything"
 created: "2026-10-13"
 owner: manu
 tags: [lesson, verification, testing, harness, process]
