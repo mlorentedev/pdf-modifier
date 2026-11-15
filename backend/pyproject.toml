@@ -51,6 +51,13 @@ Documentation = "https://mlorentedev.github.io/pdf-modifier/"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# A Renovate lock refresh runs CI with this repository's secrets. uv leaves releases
+# younger than three days out of its resolutions, in CI and on the developer's
+# machine alike (mlorentedev/ci-workflows#81). pip does not read this table, so
+# `pip install .` in backend/Dockerfile is not covered.
+exclude-newer = "3 days"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/pdf_modifier"]
 
